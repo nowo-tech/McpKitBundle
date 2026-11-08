@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\McpKitBundle\Tests\Integration\Kernel;
 
+use Nowo\McpKitBundle\Context\McpCallContext;
 use Nowo\McpKitBundle\Http\McpEndpointController;
 use Nowo\McpKitBundle\Http\McpHeaderValidator;
 use Nowo\McpKitBundle\Protocol\JsonRpcError;
@@ -17,6 +18,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use stdClass;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * The JSON-RPC methods on both eras.
@@ -142,5 +144,19 @@ final class MethodsTest extends KernelTestCase
         $this->assertRpcError($this->modern($kernel, 'resources/read', ['uri' => 'demo://x']), 200, -32602);
         $this->assertRpcError($this->legacy($kernel, 'tools/call', ['arguments' => new stdClass()]), 200, -32602);
         $this->assertRpcError($this->legacy($kernel, 'resources/read', ['name' => 'x']), 200, -32602);
+    }
+
+    #[Test]
+    public function initializeRecordsTheNegotiatedVersion(): void
+    {
+        $kernel  = $this->bootKernel();
+        $request = Request::create('/mcp', 'POST', [], [], [], [
+            'REMOTE_ADDR'        => '203.0.113.9',
+            'HTTP_AUTHORIZATION' => 'Bearer tok-ada',
+            'CONTENT_TYPE'       => 'application/json',
+        ], '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}');
+        $kernel->handle($request);
+
+        self::assertSame('2025-06-18', McpCallContext::fromRequest($request)?->protocolVersion);
     }
 }

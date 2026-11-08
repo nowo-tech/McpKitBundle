@@ -76,6 +76,10 @@ final class NowoMcpKitExtension extends Extension
             throw new InvalidConfigurationException('nowo_mcp_kit.hooks.authenticator is required when nowo_mcp_kit.enabled is true (the bundle stores no tokens).');
         }
 
+        if (!$config['firewall_check'] && (!$container->hasParameter('kernel.debug') || $container->getParameter('kernel.debug') !== true)) {
+            throw new InvalidConfigurationException('nowo_mcp_kit.firewall_check: false is for tests only and is refused unless kernel.debug is true (it removes the check that ties the token to the firewall user).');
+        }
+
         $container->register(self::OPTIONS_ID, McpEndpointOptions::class)->setArguments([
             array_values(array_map(strtolower(...), $config['allowed_origins'])),
             $config['legacy']['enabled'],

@@ -8,6 +8,7 @@ use function array_slice;
 use function explode;
 use function in_array;
 use function is_numeric;
+use function max;
 use function strtolower;
 use function trim;
 
@@ -44,6 +45,7 @@ final class McpMediaType
 
     /**
      * Whether an `Accept` header lets the server answer `application/json`. A missing or empty header accepts anything.
+     * The most specific matching range decides (RFC 9110): `application/json;q=0` refuses JSON even with a wildcard.
      *
      * @param string|null $accept the header value
      *
@@ -54,18 +56,17 @@ final class McpMediaType
         if ($accept === null || trim($accept) === '') {
             return true;
         }
+        $qualities = [];
         foreach (explode(',', $accept) as $range) {
             $parts = explode(';', $range);
             $type  = strtolower(trim($parts[0]));
-            if (!in_array($type, ['application/json', 'application/*', '*/*'], true)) {
-                continue;
-            }
-            if (self::quality($parts) > 0.0) {
-                return true;
+            if (in_array($type, ['application/json', 'application/*', '*/*'], true)) {
+                $qualities[$type] = max($qualities[$type] ?? 0.0, self::quality($parts));
             }
         }
+        $quality = $qualities['application/json'] ?? $qualities['application/*'] ?? $qualities['*/*'] ?? 0.0;
 
-        return false;
+        return $quality > 0.0;
     }
 
     /**

@@ -19,6 +19,9 @@ All notable changes to this project are documented here. The format follows
   (default available); `McpPrincipal`, `McpCredential`, `McpFirewallGuard`; `McpCallContext` on the request.
 - Configuration: `server_info`, `allowed_origins`, `legacy`, `cache`, `limits`, `maintenance_retry_after`,
   `firewall_check`, `hooks`.
+- Audit IH (S1): the firewall guard also requires a stateless firewall (without SecurityBundle's helper: no started
+  session); `firewall_check: false` is refused unless `kernel.debug`; `Accept` uses the most specific range
+  (`application/json;q=0` refuses JSON); the legacy call context records the negotiated version.
 - Tool registry: `McpToolInterface` (static `definition()`, autoconfigured tag `nowo_mcp_kit.tool`),
   `McpToolDefinition`, `McpToolKind` (read-only / additive / destructive, explicit annotations), build-time
   `McpRegistryPass` + `McpSchemaRules` (closed schemas, bounded strings and arrays, free text only under `untrusted`,

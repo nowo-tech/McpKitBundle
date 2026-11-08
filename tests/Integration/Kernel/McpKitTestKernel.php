@@ -32,8 +32,9 @@ final class McpKitTestKernel extends Kernel
         private readonly Closure $services,
         private readonly Closure $routes,
         private readonly bool $withSecurity = true,
+        bool $debug = false,
     ) {
-        parent::__construct('test', false);
+        parent::__construct('test', $debug);
     }
 
     public function registerBundles(): iterable

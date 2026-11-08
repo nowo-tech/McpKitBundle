@@ -93,4 +93,18 @@ final class NowoMcpKitExtensionTest extends TestCase
         self::assertSame(['2026-07-28'], $off->supportedVersions());
         self::assertFalse($off->isLegacyVersion('2025-11-25'));
     }
+
+    #[Test]
+    public function theFirewallCheckIsOffOnlyInDebug(): void
+    {
+        $config = [['enabled' => true, 'firewall_check' => false, 'hooks' => ['authenticator' => 'app.auth']]];
+        $debug  = new ContainerBuilder();
+        $debug->setParameter('kernel.debug', true);
+        (new NowoMcpKitExtension())->load($config, $debug);
+        self::assertTrue($debug->hasDefinition(McpEndpointController::class));
+
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('tests only');
+        (new NowoMcpKitExtension())->load($config, new ContainerBuilder());
+    }
 }

@@ -360,7 +360,9 @@ final readonly class McpEndpointController
                 throw $this->unsupportedVersion(is_string($params->protocolVersion ?? null) ? $params->protocolVersion : null);
             }
 
-            return new McpCallContext(McpEra::Legacy, $legacy[0], McpClientInfo::fromJson($params->clientInfo ?? null), $userAgent);
+            $requested = $params->protocolVersion ?? null;
+
+            return new McpCallContext(McpEra::Legacy, is_string($requested) && in_array($requested, $legacy, true) ? $requested : $legacy[0], McpClientInfo::fromJson($params->clientInfo ?? null), $userAgent);
         }
 
         $header = $request->headers->get(McpProtocol::HEADER_PROTOCOL_VERSION);
