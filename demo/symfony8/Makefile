@@ -89,12 +89,13 @@ verify: ensure-up
 	if [ "$$code" != "200" ]; then echo "Demo check failed: $$code"; exit 1; fi; \
 	echo "Demo check OK ($$code)"
 
-# Official MCP conformance runner, pinned exactly (owner decision Q-O7: a required gate with a per-check baseline).
+# Official MCP conformance runner, pinned exactly in conformance/package-lock.json (owner decision Q-O7: a required
+# gate with a per-check baseline). The Node image is pinned by digest.
 # Boots the demo in the conformance profile (MCP_CONFORMANCE=1: Caddy adds the conformance token, worker mode) and runs
 # the requirement sets of both protocol revisions, then the TypeScript SDK e2e. Bumping either is a deliberate PR.
-CONFORMANCE_RUNNER ?= @modelcontextprotocol/conformance@0.2.0-alpha.12
 CONFORMANCE_REVISIONS ?= 2026-07-28 2025-11-25
-NODE_IMAGE ?= node:22-alpine
+# node:22-alpine, pinned by digest.
+NODE_IMAGE ?= node@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202
 
 test-conformance:
 	@if [ ! -f .env ]; then cp .env.example .env 2>/dev/null || true; fi
@@ -108,9 +109,10 @@ test-conformance:
 	for rev in $(CONFORMANCE_REVISIONS); do \
 		echo "== MCP conformance, requirement set $$rev"; \
 		docker run --rm --network host --user "$$(id -u):$$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/npm \
-			-v "$(CURDIR)/../../tests/Conformance:/baseline:ro" $(NODE_IMAGE) \
-			npx -y $(CONFORMANCE_RUNNER) server --url http://localhost:$$PORT/mcp --requirements $$rev \
-			--expected-failures /baseline/expected-failures-$$rev.yml || status=1; \
+			-v "$(CURDIR)/../../tests/Conformance:/baseline:ro" -v "$(CURDIR)/conformance:/w" -w /w $(NODE_IMAGE) \
+			sh -c "npm ci --no-fund --no-audit --loglevel=error && ./node_modules/.bin/conformance server \
+			--url http://localhost:$$PORT/mcp --requirements $$rev \
+			--expected-failures /baseline/expected-failures-$$rev.yml" || status=1; \
 	done; \
 	echo "== TypeScript SDK e2e (official client, pinned in e2e-sdk/package-lock.json)"; \
 	docker run --rm --network host --user "$$(id -u):$$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/npm \

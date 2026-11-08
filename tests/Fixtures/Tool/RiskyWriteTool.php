@@ -43,7 +43,7 @@ final class RiskyWriteTool implements McpToolInterface
     {
         ++$this->writes;
         // The second id is not plain ASCII: it is left out of the answer, never a reason to fail.
-        $ids = ['note' => self::ID, 'label' => "caf\xC3\xA9"];
+        $ids = $this->ids();
 
         return match ($call->arguments['mode']) {
             'ok'        => McpToolResult::ok(['id' => self::ID], $ids, ['title']),
@@ -52,5 +52,15 @@ final class RiskyWriteTool implements McpToolInterface
             'big'       => McpToolResult::ok(['id' => self::ID, 'untrusted' => McpUntrusted::of(['t' => str_repeat('x', 5000)])], $ids, ['title']),
             default     => McpToolResult::ok(['id' => self::ID, 'untrusted' => McpUntrusted::of(['t' => "\xC3\x28"])], $ids, ['title']),
         };
+    }
+
+    /**
+     * Ids that break their declared type on purpose (a host bug the saved answer must survive, audit IH-I15).
+     *
+     * @return array<string, string>
+     */
+    private function ids(): array
+    {
+        return ['note' => self::ID, 'label' => "caf\xC3\xA9", 'n' => 7, 'bad' => ['x']]; // @phpstan-ignore return.type
     }
 }

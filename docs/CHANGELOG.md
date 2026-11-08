@@ -54,6 +54,9 @@ All notable changes to this project are documented here. The format follows
   per-check baselines in `tests/Conformance/`. `resources/read` not-found errors carry the requested URI in `data`
   (SEP-2164) when it is short visible ASCII.
 - TypeScript SDK e2e (`@modelcontextprotocol/sdk` 1.32.2, pinned) in the same gate, including the `SAVED_001` answer.
+- Final audit IH: safe patterns refuse inline options and `(?…` groups other than `(?:`, and PCRE verbs (IH-I14); the
+  saved-write answer skips ids that are not strings or integers (IH-I15); the conformance runner runs from a lockfile
+  and the Node image is pinned by digest (IH-I16); SECURITY.md updated (IH-I17).
 - Demo conformance profile (`MCP_CONFORMANCE=1`), demo client setup page, and full documentation (usage, security,
   worker audit, upgrading).
 - Paging helpers: `McpTextSlice` (characters, `truncated` / `next_offset` / `total`), `McpCursor` (opaque base64url,

@@ -40,7 +40,8 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - Destructive tools are hidden and refused without the principal's tick, whatever the authorizer says.
 - Writes need an audit listener and pass the write budget before the tool runs.
 - Schemas resolve only local `$defs`; nothing is fetched.
-- A committed write is never reported as an error, so an agent is not invited to repeat it.
+- A committed write whose result cannot be shown answers the error result `SAVED_001` with its ids and a fixed "saved,
+  do not repeat" text, so an agent is told not to repeat it (error results are exempt from the output schema).
 - Tools receive the whole `Request` (through `McpToolCall`); they must not read credentials from it.
 - A tool declared `ReadOnly` that writes skips the audit gate and the write budget: the kit cannot detect it, so host
   review must.
@@ -59,8 +60,9 @@ or `clientInfo`.
 
 ## Conformance
 
-The official MCP conformance runner is a required CI gate (both revisions), including its DNS-rebinding scenario: a
-foreign `Host` / `Origin` is refused and the demo's own origin is accepted.
+The official MCP conformance runner and the TypeScript SDK e2e are a required CI gate (both revisions), including the
+runner's DNS-rebinding scenario: a foreign `Origin` is refused and the demo's own origin is accepted. The kit checks
+`Origin` only; set `framework.trusted_hosts` so requests for a foreign `Host` never reach the application.
 
 ## Host checklist
 
@@ -68,6 +70,7 @@ foreign `Host` / `Origin` is refused and the demo's own origin is accepted.
   most `max_body_bytes`, but the SAPI may have buffered more.
 - Do not read the request body in a listener that runs before the endpoint (body logging, error reporting): the kit
   authenticates and checks the budget before parsing, and an earlier reader defeats that.
+- Configure `framework.trusted_hosts`: the kit validates `Origin`, not `Host`.
 - Configure `framework.trusted_proxies`: failed tokens are counted per client IP, and behind an untrusted proxy every
   client shares one bucket, so a stranger could lock everyone out.
 - Intermediaries that route or rate-limit on `Mcp-Method` / `Mcp-Name` must refuse legacy versions, which do not need
@@ -75,6 +78,5 @@ foreign `Host` / `Origin` is refused and the demo's own origin is accepted.
 
 ## Audit status
 
-Audit IH (REQ-SEC-004), S1 and S2: Pass / Low. Fixed: IH-L1 (stateless firewall), IH-L2 (committed writes),
-IH-L3 (free-text loopholes), IH-L4 (escape set), IH-I1, IH-I3, IH-I4, IH-I5, IH-I7. IH-I2 and IH-I6 accepted as
-documented. Re-verification pending.
+REQ-SEC-004: Appendix IH, Pass / Info (final audit of 1.0.0, S1 to S4). Every Low (IH-L1 to IH-L4 and their
+residuals) is fixed; IH-I2 and IH-I6 are accepted as documented.

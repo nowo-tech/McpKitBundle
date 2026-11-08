@@ -40,6 +40,7 @@ use function hrtime;
 use function in_array;
 use function intdiv;
 use function is_array;
+use function is_int;
 use function is_string;
 use function json_decode;
 use function json_encode;
@@ -303,7 +304,9 @@ final readonly class McpToolInvoker
         // are plain ASCII are echoed, so encoding cannot fail and no second event can follow (IH-I8).
         $ids = [];
         foreach ($result->auditIds as $key => $id) {
-            if (preg_match('/^[a-z][a-z0-9_]{0,63}$/', (string) $key) === 1 && preg_match('/^[A-Za-z0-9._:-]{1,128}$/', $id) === 1) {
+            // Typed as strings, but a host bug must not make this answer throw (audit IH-I15).
+            $id = is_int($id) ? (string) $id : $id;
+            if (is_string($id) && preg_match('/^[a-z][a-z0-9_]{0,63}$/', (string) $key) === 1 && preg_match('/^[A-Za-z0-9._:-]{1,128}$/', $id) === 1) {
                 $ids[(string) $key] = $id;
             }
         }

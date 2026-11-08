@@ -89,6 +89,9 @@ final class McpSchemaRulesTest extends TestCase
         yield 'top-level alternation of groups' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^(?:open)|(?:closed)$', 'maxLength' => 10]])), 'free text'];
         yield 'unbalanced group' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^(a$', 'maxLength' => 10]])), 'pattern'];
         yield 'closing group first' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^a)(b$', 'maxLength' => 10]])), 'pattern'];
+        yield 'inline extended option' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^(?x)open#$', 'maxLength' => 10]])), 'free text'];
+        yield 'inline multiline option' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^open(?m)$', 'maxLength' => 10]])), 'free text'];
+        yield 'pcre verb in pattern' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^(*ACCEPT)open$', 'maxLength' => 10]])), 'free text'];
         yield 'mixed-class range' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^[0-z]+$', 'maxLength' => 10]])), 'free text'];
         yield 'uri with wildcard' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://.*$', 'maxLength' => 100]])), 'format": "uri" needs'];
         yield 'uri with top-level alternation' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://x|.*$', 'maxLength' => 100]])), 'format": "uri" needs'];

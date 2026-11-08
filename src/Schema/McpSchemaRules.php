@@ -71,9 +71,10 @@ final class McpSchemaRules
      * One token of a safe trusted pattern body: a literal (letters, digits, `_ : # @ / -`), an escaped literal, `\d`, a
      * positive character class of those characters and same-class ranges (`a-z`, `A-Z`, `0-9`; a `.` is literal inside a
      * class), a quantifier, a group or an alternation inside a group. No `.` wildcard, no whitespace, no `\s \S \w \W
-     * \p`, no negated class, no top-level alternation (it would break the anchors).
+     * \p`, no negated class, no top-level alternation (it would break the anchors), no inline options or other `(?…`
+     * groups except `(?:`, no PCRE verbs `(*…`.
      */
-    private const SAFE_PATTERN_TOKEN = '~\G(?:[A-Za-z0-9_:#@/-]|\\\\[.\-/#:+?*()\[\]{}^$|]|\\\\d|\[(?:[a-z]-[a-z]|[A-Z]-[A-Z]|[0-9]-[0-9]|[A-Za-z0-9_:#@/.]|-(?=\])|\\\\[.\-/])+\]|\{[0-9]{1,3}(?:,[0-9]{0,3})?\}|[?+*]|\((?:\?:)?|\)|\|)~';
+    private const SAFE_PATTERN_TOKEN = '~\G(?:[A-Za-z0-9_:#@/-]|\\\\[.\-/#:+?*()\[\]{}^$|]|\\\\d|\[(?:[a-z]-[a-z]|[A-Z]-[A-Z]|[0-9]-[0-9]|[A-Za-z0-9_:#@/.]|-(?=\])|\\\\[.\-/])+\]|\{[0-9]{1,3}(?:,[0-9]{0,3})?\}|[?+*]|\((?:\?:|(?![?*]))|\)|\|)~';
 
     /**
      * Checks a tool definition.
