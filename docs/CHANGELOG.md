@@ -5,6 +5,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-08
+
+First release: a stateless MCP Streamable HTTP server for Symfony (spec 219). Transport, tool and resource registries, host authentication hooks, limits and audit; the tools stay in the host. Independent audit: Appendix IH, Pass / Info.
+
 ### Added
 
 - Repository scaffold: package `nowo-tech/mcp-kit-bundle`, bundle class, `nowo_mcp_kit` configuration root (`enabled`,
