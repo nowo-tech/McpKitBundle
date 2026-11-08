@@ -1,0 +1,5 @@
+# The MCP endpoint (nowo_mcp_kit.path, default /mcp). Empty when nowo_mcp_kit.enabled is false.
+# Import it outside any locale prefix.
+nowo_mcp_kit:
+    resource: .
+    type: nowo_mcp_kit

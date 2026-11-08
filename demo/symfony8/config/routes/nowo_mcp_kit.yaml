@@ -1,0 +1,3 @@
+# The MCP endpoint (POST /mcp), outside any locale prefix.
+nowo_mcp_kit:
+    resource: '@NowoMcpKitBundle/config/routes/mcp.yaml'

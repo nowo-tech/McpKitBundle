@@ -1,2 +1,12 @@
 nowo_mcp_kit:
     enabled: true
+    server_info:
+        name: mcp-kit-demo
+        title: MCP Kit demo
+        version: '%env(default:app_version_default:APP_VERSION)%'
+    hooks:
+        authenticator: App\Mcp\DemoMcpAuthenticator
+        rate_limiter: App\Mcp\DemoRateLimiter
+
+parameters:
+    app_version_default: demo

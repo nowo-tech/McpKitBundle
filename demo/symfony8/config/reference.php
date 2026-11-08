@@ -1089,6 +1089,38 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  * @psalm-type NowoMcpKitConfig = array{
  *     enabled?: bool|Param, // Registers the MCP endpoint. False: the bundle registers nothing reachable. // Default: false
  *     path?: scalar|Param|null, // Path of the MCP endpoint (POST only), outside any locale prefix. // Default: "/mcp"
+ *     server_info?: array{ // serverInfo: from configuration only (container parameters allowed), never request data.
+ *         name?: scalar|Param|null, // Default: "app"
+ *         title?: scalar|Param|null, // Default: null
+ *         version?: scalar|Param|null, // Default: "0.0.0"
+ *     },
+ *     allowed_origins?: list<scalar|Param|null>,
+ *     legacy?: array{
+ *         enabled?: bool|Param, // Serve legacy (initialize-based) clients statelessly. // Default: true
+ *         versions?: list<scalar|Param|null>,
+ *     },
+ *     cache?: array{ // ttlMs caching hints (cacheScope is always "private").
+ *         discover_ttl_ms?: int|Param, // Default: 300000
+ *         tools_list_ttl_ms?: int|Param, // Default: 300000
+ *         templates_list_ttl_ms?: int|Param, // Default: 300000
+ *         resources_list_ttl_ms?: int|Param, // Default: 300000
+ *     },
+ *     limits?: array{
+ *         max_body_bytes?: int|Param, // Request body cap (413 above). // Default: 1048576
+ *         max_json_depth?: int|Param, // JSON nesting cap (400 -32700 above). // Default: 64
+ *         max_text_chars?: int|Param, // Default page size of McpTextSlice. // Default: 100000
+ *         max_list_rows?: int|Param, // Default page size of list tools. // Default: 50
+ *         max_result_bytes?: int|Param, // Serialized tool result cap (OUTPUT_001 above). // Default: 2097152
+ *         slow_call_ms?: int|Param, // Calls slower than this are logged at warning level. // Default: 2000
+ *     },
+ *     maintenance_retry_after?: int|Param, // Retry-After seconds of the 503 answered in maintenance. // Default: 60
+ *     firewall_check?: bool|Param, // Refuse (500) when the firewall user is not the principal user or the firewall is not secured. // Default: true
+ *     hooks?: array{ // Service ids of the host hooks.
+ *         authenticator?: scalar|Param|null, // McpAuthenticatorInterface; required when enabled. // Default: null
+ *         authorizer?: scalar|Param|null, // McpToolAuthorizerInterface; default: no tool allowed. // Default: null
+ *         rate_limiter?: scalar|Param|null, // McpRateLimiterInterface; default: every request 429. // Default: null
+ *         availability?: scalar|Param|null, // McpAvailabilityInterface; default: always available. // Default: null
+ *     },
  * }
  * @psalm-type TwigExtraConfig = array{
  *     cache?: bool|array{

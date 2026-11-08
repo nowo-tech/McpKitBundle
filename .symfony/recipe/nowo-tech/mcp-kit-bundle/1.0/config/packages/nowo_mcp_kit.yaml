@@ -1,0 +1,7 @@
+# MCP Kit Bundle: see https://github.com/nowo-tech/McpKitBundle/blob/main/docs/CONFIGURATION.md
+nowo_mcp_kit:
+    enabled: false
+    # hooks:
+    #     authenticator: App\Mcp\TokenAuthenticator
+    #     authorizer: App\Mcp\ToolAuthorizer
+    #     rate_limiter: App\Mcp\RateLimiter

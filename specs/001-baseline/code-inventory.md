@@ -13,3 +13,49 @@ Scope: every file under `src/` plus the shipped route imports under `config/rout
 | `src/NowoMcpKitBundle.php` | Bundle and DI | FR-BUNDLE-001 |
 | `src/DependencyInjection/Configuration.php` | Bundle and DI | FR-CFG-001 |
 | `src/DependencyInjection/NowoMcpKitExtension.php` | Bundle and DI | FR-CFG-001 |
+
+## Routes
+
+| Source file | Spec section | Requirement IDs |
+| --- | --- | --- |
+| `config/routes/mcp.yaml` | Bundle and DI | FR-ROUTE-001 |
+| `src/Routing/McpRouteLoader.php` | Bundle and DI | FR-ROUTE-001 |
+
+## Transport (HTTP)
+
+| Source file | Spec section | Requirement IDs |
+| --- | --- | --- |
+| `src/Http/McpEndpointController.php` | Transport | FR-HTTP-001..005, FR-PROTO-001, FR-PROTO-002, FR-SEC-001..004 |
+| `src/Http/McpMediaType.php` | Transport | FR-HTTP-003 |
+| `src/Http/McpHeaderValidator.php` | Protocol | FR-PROTO-001, FR-PROTO-003 |
+| `src/Http/McpEndpointOptions.php` | Transport | FR-CFG-002, FR-PROTO-002 |
+
+## Protocol and server
+
+| Source file | Spec section | Requirement IDs |
+| --- | --- | --- |
+| `src/Protocol/McpProtocol.php` | Protocol | FR-PROTO-001..004 |
+| `src/Protocol/McpEra.php` | Protocol | FR-PROTO-001, FR-PROTO-002 |
+| `src/Protocol/JsonRpcError.php` | Protocol | FR-HTTP-002, FR-PROTO-004 |
+| `src/Server/McpDispatcher.php` | Protocol | FR-PROTO-004 |
+| `src/Server/McpRequest.php` | Protocol | FR-PROTO-004 |
+| `src/Server/McpServerInfo.php` | Protocol | FR-CFG-002, FR-PROTO-004 |
+
+## Security hooks and context
+
+| Source file | Spec section | Requirement IDs |
+| --- | --- | --- |
+| `src/Security/McpAuthenticatorInterface.php` | Security hooks | FR-SEC-001 |
+| `src/Security/McpAuthFailure.php` | Security hooks | FR-SEC-001 |
+| `src/Security/McpPrincipal.php` | Security hooks | FR-SEC-001 |
+| `src/Security/McpCredential.php` | Security hooks | FR-SEC-001 |
+| `src/Security/McpFirewallGuard.php` | Security hooks | FR-SEC-002 |
+| `src/Security/McpRateLimiterInterface.php` | Security hooks | FR-SEC-003 |
+| `src/Security/McpRateLimitState.php` | Security hooks | FR-SEC-003 |
+| `src/Security/DenyingMcpRateLimiter.php` | Security hooks | FR-SEC-003 |
+| `src/Security/McpAvailabilityInterface.php` | Security hooks | FR-SEC-004 |
+| `src/Security/McpAvailability.php` | Security hooks | FR-SEC-004 |
+| `src/Security/AlwaysAvailable.php` | Security hooks | FR-SEC-004 |
+| `src/Context/McpCallContext.php` | Security hooks | FR-CTX-001 |
+| `src/Context/McpClientInfo.php` | Security hooks | FR-CTX-001 |
+| `src/Context/McpCallContextProvider.php` | Security hooks | FR-CTX-001 |
