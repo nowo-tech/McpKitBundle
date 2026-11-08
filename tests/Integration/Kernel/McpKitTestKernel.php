@@ -26,6 +26,7 @@ final class McpKitTestKernel extends Kernel
     /**
      * @param Closure(ContainerConfigurator): void $services services/extension configuration
      * @param Closure(RoutingConfigurator): void $routes routes
+     * @param array<string, mixed> $framework extra FrameworkBundle configuration
      */
     public function __construct(
         private readonly string $id,
@@ -33,6 +34,7 @@ final class McpKitTestKernel extends Kernel
         private readonly Closure $routes,
         private readonly bool $withSecurity = true,
         bool $debug = false,
+        private readonly array $framework = [],
     ) {
         parent::__construct('test', $debug);
     }
@@ -65,6 +67,7 @@ final class McpKitTestKernel extends Kernel
             'handle_all_throwables' => true,
             'php_errors'            => ['log' => true],
             'router'                => ['utf8' => true],
+            ...$this->framework,
         ]);
         $container->services()->set('logger', NullLogger::class);
         ($this->services)($container);

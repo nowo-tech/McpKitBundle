@@ -21,7 +21,9 @@ All notable changes to this project are documented here. The format follows
   `firewall_check`, `hooks`.
 - Audit IH (S1): the firewall guard also requires a stateless firewall (without SecurityBundle's helper: no started
   session); `firewall_check: false` is refused unless `kernel.debug`; `Accept` uses the most specific range
-  (`application/json;q=0` refuses JSON); the legacy call context records the negotiated version.
+  (`application/json;q=0` refuses JSON); the legacy call context records the negotiated version. On a refusal the
+  guard drops the security token (and empties a started session), so a stateful firewall sends no session cookie
+  with the 500 (IH-L1r).
 - Tool registry: `McpToolInterface` (static `definition()`, autoconfigured tag `nowo_mcp_kit.tool`),
   `McpToolDefinition`, `McpToolKind` (read-only / additive / destructive, explicit annotations), build-time
   `McpRegistryPass` + `McpSchemaRules` (closed schemas, bounded strings and arrays, free text only under `untrusted`,

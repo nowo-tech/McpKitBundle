@@ -211,9 +211,12 @@ final class EndpointPipelineTest extends KernelTestCase
         $kernel = $this->bootKernel([], [], [
             'providers' => ['memory' => ['memory' => ['users' => ['ada' => ['password' => '', 'roles' => ['ROLE_USER']]]]]],
             'firewalls' => ['mcp' => ['pattern' => '^/mcp$', 'stateless' => false, 'provider' => 'memory', 'custom_authenticators' => [TestFirewallAuthenticator::class]]],
-        ]);
+        ], null, true, false, ['session' => ['storage_factory_id' => 'session.storage.factory.mock_file']]);
 
-        $this->assertRpcError($this->send($kernel, 'POST', self::DISCOVER, self::HEADERS), 500, -32603, false);
+        $response = $this->send($kernel, 'POST', self::DISCOVER, self::HEADERS);
+        $this->assertRpcError($response, 500, -32603, false);
+        self::assertSame([], $response->headers->getCookies());
+        self::assertFalse($response->headers->has('Set-Cookie'));
     }
 
     #[Test]
