@@ -77,7 +77,7 @@ idempotency keys live in the app cache (no database). The demo allows its own or
 **Conformance profile** (`MCP_CONFORMANCE=1`, used by `make test-conformance`): the official runner sends no credential,
 so `docker/frankenphp/Caddyfile.conformance` (worker mode) adds the conformance token, which the demo accepts only in
 this profile. The runner's fixture tools (`test_simple_text`, `test_error_handling`, `test_logging_tool`,
-`test_streaming_elicitation`) and templates (`test://static-text`, `test://template/{id}/data`) are listed only for that
+`test_streaming_elicitation`, and `test_saved_without_result` for the SDK e2e) and templates (`test://static-text`, `test://template/{id}/data`) are listed only for that
 token.
 
 ## Demo smoke (REQ-TEST-011)

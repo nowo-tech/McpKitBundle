@@ -1,0 +1,12 @@
+{
+    "name": "mcp-kit-demo-e2e-sdk",
+    "private": true,
+    "type": "module",
+    "description": "End-to-end check of the demo with the official TypeScript MCP SDK client (pinned).",
+    "scripts": {
+        "e2e": "node e2e.mjs"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "1.32.2"
+    }
+}

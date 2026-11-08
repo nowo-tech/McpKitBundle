@@ -91,7 +91,7 @@ verify: ensure-up
 
 # Official MCP conformance runner, pinned exactly (owner decision Q-O7: a required gate with a per-check baseline).
 # Boots the demo in the conformance profile (MCP_CONFORMANCE=1: Caddy adds the conformance token, worker mode) and runs
-# the requirement sets of both protocol revisions. Bumping the runner is a deliberate PR.
+# the requirement sets of both protocol revisions, then the TypeScript SDK e2e. Bumping either is a deliberate PR.
 CONFORMANCE_RUNNER ?= @modelcontextprotocol/conformance@0.2.0-alpha.12
 CONFORMANCE_REVISIONS ?= 2026-07-28 2025-11-25
 NODE_IMAGE ?= node:22-alpine
@@ -112,6 +112,10 @@ test-conformance:
 			npx -y $(CONFORMANCE_RUNNER) server --url http://localhost:$$PORT/mcp --requirements $$rev \
 			--expected-failures /baseline/expected-failures-$$rev.yml || status=1; \
 	done; \
+	echo "== TypeScript SDK e2e (official client, pinned in e2e-sdk/package-lock.json)"; \
+	docker run --rm --network host --user "$$(id -u):$$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/npm \
+		-e MCP_URL=http://localhost:$$PORT/mcp -v "$(CURDIR)/e2e-sdk:/w" -w /w $(NODE_IMAGE) \
+		sh -c 'npm ci --no-fund --no-audit --loglevel=error && node e2e.mjs' || status=1; \
 	$(COMPOSE) down; \
 	exit $$status
 

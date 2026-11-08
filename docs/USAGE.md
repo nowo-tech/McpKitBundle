@@ -318,3 +318,7 @@ runner, `@modelcontextprotocol/conformance` pinned to an exact version, with the
 offer by design (prompts, completions, logging, sampling, elicitation, multi round-trip requests, subscriptions,
 progress, binary or image content, required client capabilities); the runner fails on any regression and on any stale
 entry. Extension and pending scenarios run but do not count.
+
+The same target then runs `demo/symfony8/e2e-sdk/e2e.mjs` with the official TypeScript SDK client (pinned in its
+`package-lock.json`): connect, list tools, read a note with injection text, get `SAVED_001` back as a tool result (not
+an exception), read a resource and a missing one.

@@ -53,6 +53,7 @@ All notable changes to this project are documented here. The format follows
   `2026-07-28` and `2025-11-25` requirement sets against the demo (`make test-conformance`, required CI job), with
   per-check baselines in `tests/Conformance/`. `resources/read` not-found errors carry the requested URI in `data`
   (SEP-2164) when it is short visible ASCII.
+- TypeScript SDK e2e (`@modelcontextprotocol/sdk` 1.32.2, pinned) in the same gate, including the `SAVED_001` answer.
 - Demo conformance profile (`MCP_CONFORMANCE=1`), demo client setup page, and full documentation (usage, security,
   worker audit, upgrading).
 - Paging helpers: `McpTextSlice` (characters, `truncated` / `next_offset` / `total`), `McpCursor` (opaque base64url,
