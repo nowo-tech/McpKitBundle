@@ -109,7 +109,7 @@ final class ResourcesTest extends KernelTestCase
             ['demo://note/' . NoteGetTool::ID . '/x', 'tok-ada'],
             ['demo://secret/abc/42', 'tok-ada'],
             ['demo://note/0b8f3c5e-6a1d-4c7e-9f2a-1b3c5d7e9f02', 'tok-ada'],
-            ['file:///etc/passwd', 'tok-grace'],
+            ['file:///etc/hosts', 'tok-grace'],
             ['demo://note/' . str_repeat('a', 3000), 'tok-grace'],
         ] as [$uri, $token]) {
             $response = $this->modern($kernel, 'resources/read', ['uri' => $uri], [], $token);
