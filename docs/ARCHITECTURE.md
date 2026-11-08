@@ -8,6 +8,12 @@
 | Protocol | `Protocol\McpProtocol` (versions, `_meta` keys, codes, notice), `Protocol\McpEra`, `Protocol\JsonRpcError` |
 | Server | `Server\McpDispatcher` (methods), `Server\McpRequest`, `Server\McpServerInfo` |
 | Security hooks | `Security\McpAuthenticatorInterface`, `McpPrincipal`, `McpAuthFailure`, `McpCredential`, `McpRateLimiterInterface`, `McpRateLimitState`, `DenyingMcpRateLimiter`, `McpAvailabilityInterface`, `McpAvailability`, `AlwaysAvailable`, `McpFirewallGuard` |
+| Tools | `Tool\McpToolInterface`, `McpToolDefinition`, `McpToolKind`, `McpToolCall`, `McpToolResult`, `McpToolError`, `McpUntrusted`, `McpResourceLink`, `McpIdempotencyKey` |
+| Registry | `DependencyInjection\Compiler\McpRegistryPass` (build-time), `Registry\McpToolRegistry`, `Server\McpToolInvoker` |
+| Schemas | `Schema\McpSchemaRules` (build-time rules), `Schema\McpSchemaNormalizer`, `Schema\McpSchemaValidator` (opis/json-schema, no remote loader) |
+| Envelope | `Envelope\McpEnvelope` (untrusted groups, escaped text block) |
+| Authorization | `Security\McpToolAuthorizerInterface`, `DenyingMcpToolAuthorizer` |
+| Audit | `Event\McpToolCallEvent`, `Event\McpCallOutcome` |
 | Context | `Context\McpCallContext`, `Context\McpClientInfo`, `Context\McpCallContextProvider` |
 
 Per-request data (principal, rate-limit state, call context) lives on the `Request` attributes; services are readonly.

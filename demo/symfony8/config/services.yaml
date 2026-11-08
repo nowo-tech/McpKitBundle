@@ -9,3 +9,7 @@ services:
     App\Mcp\DemoRateLimiter:
         arguments:
             $cacheApp: '@cache.app'
+
+    App\Mcp\NoteStore:
+        arguments:
+            $cacheApp: '@cache.app'

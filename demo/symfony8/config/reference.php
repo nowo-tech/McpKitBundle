@@ -1111,7 +1111,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         max_text_chars?: int|Param, // Default page size of McpTextSlice. // Default: 100000
  *         max_list_rows?: int|Param, // Default page size of list tools. // Default: 50
  *         max_result_bytes?: int|Param, // Serialized tool result cap (OUTPUT_001 above). // Default: 2097152
- *         slow_call_ms?: int|Param, // Calls slower than this are logged at warning level. // Default: 2000
+ *         slow_call_ms?: int|Param, // Calls taking at least this long are logged at warning level (0: every call). // Default: 2000
  *     },
  *     maintenance_retry_after?: int|Param, // Retry-After seconds of the 503 answered in maintenance. // Default: 60
  *     firewall_check?: bool|Param, // Refuse (500) when the firewall user is not the principal user or the firewall is not secured. // Default: true

@@ -60,3 +60,18 @@ validation, the untrusted envelope, size caps and an audit event. The host regis
   `Retry-After`.
 - **FR-SEC-004** Availability: disabled 404 (empty), maintenance 503 `-31005`.
 - **FR-CTX-001** `McpCallContext` (era, version, sanitised client, cleaned User-Agent) lives on the request.
+
+### Tools
+
+- **FR-TOOL-001** Tools are services with a static definition; the registry is compiled at build time and the build
+  fails on an invalid or duplicate definition (`McpSchemaRules`).
+- **FR-TOOL-002** `tools/list` lists, in a fixed order, the tools the authorizer allows; destructive tools need the
+  principal's tick.
+- **FR-TOOL-003** `tools/call` order: unknown name, arguments shape, tick / authorizer (`TOKEN_001`), unknown argument
+  (`INPUT_001`), schema (`INPUT_002`), audit listener (`AUDIT_001`), write budget (429), tool, output schema, result cap
+  (`OUTPUT_001`).
+- **FR-TOOL-004** Business errors are `isError` results `{ECODE, err}` with extra fields; other failures `-32603`.
+- **FR-ENV-001** Untrusted groups are emitted under `untrusted` behind the fixed notice; the text block escapes hidden
+  characters.
+- **FR-AUDIT-001** One `McpToolCallEvent` per call that reaches the registry, ids and field names only; a throwing
+  listener does not change the answer.

@@ -105,7 +105,7 @@ final class Configuration implements ConfigurationInterface
                         ->integerNode('max_text_chars')->info('Default page size of McpTextSlice.')->defaultValue(100000)->min(1)->end()
                         ->integerNode('max_list_rows')->info('Default page size of list tools.')->defaultValue(50)->min(1)->end()
                         ->integerNode('max_result_bytes')->info('Serialized tool result cap (OUTPUT_001 above).')->defaultValue(2097152)->min(1024)->end()
-                        ->integerNode('slow_call_ms')->info('Calls slower than this are logged at warning level.')->defaultValue(2000)->min(1)->end()
+                        ->integerNode('slow_call_ms')->info('Calls taking at least this long are logged at warning level (0: every call).')->defaultValue(2000)->min(0)->end()
                     ->end()
                 ->end()
                 ->integerNode('maintenance_retry_after')

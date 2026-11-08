@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Nowo\McpKitBundle\Protocol;
 
+use Nowo\McpKitBundle\Security\McpRateLimitState;
 use RuntimeException;
+
+use function max;
 
 /**
  * A JSON-RPC error answer with its HTTP status. The message is static text: it never holds a value from the request.
@@ -110,5 +113,19 @@ final class JsonRpcError extends RuntimeException
     public static function internal(): self
     {
         return new self(McpProtocol::INTERNAL_ERROR, 'Internal error', 500);
+    }
+
+    /**
+     * A budget refused the request: 429 `-31001` with `data.limit` and `Retry-After`.
+     *
+     * @param McpRateLimitState $state the refused state
+     * @param string $limit which limit (`requests`, `writes`, `failed_tokens`)
+     * @param int $now current Unix time
+     *
+     * @return self the error
+     */
+    public static function rateLimited(McpRateLimitState $state, string $limit, int $now): self
+    {
+        return new self(McpProtocol::RATE_LIMITED, 'Rate limit reached', 429, ['limit' => $limit], ['Retry-After' => (string) max(1, $state->resetAt - $now)]);
     }
 }

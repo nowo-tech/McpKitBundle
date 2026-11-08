@@ -5,16 +5,22 @@ declare(strict_types=1);
 namespace Nowo\McpKitBundle\DependencyInjection;
 
 use Nowo\McpKitBundle\Context\McpCallContextProvider;
+use Nowo\McpKitBundle\DependencyInjection\Compiler\McpRegistryPass;
 use Nowo\McpKitBundle\Http\McpEndpointController;
 use Nowo\McpKitBundle\Http\McpEndpointOptions;
+use Nowo\McpKitBundle\Registry\McpToolRegistry;
 use Nowo\McpKitBundle\Routing\McpRouteLoader;
 use Nowo\McpKitBundle\Security\AlwaysAvailable;
 use Nowo\McpKitBundle\Security\DenyingMcpRateLimiter;
+use Nowo\McpKitBundle\Security\DenyingMcpToolAuthorizer;
 use Nowo\McpKitBundle\Security\McpFirewallGuard;
 use Nowo\McpKitBundle\Server\McpDispatcher;
 use Nowo\McpKitBundle\Server\McpServerInfo;
+use Nowo\McpKitBundle\Server\McpToolInvoker;
+use Nowo\McpKitBundle\Tool\McpToolInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+use Symfony\Component\DependencyInjection\Argument\ServiceLocatorArgument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
@@ -94,9 +100,24 @@ final class NowoMcpKitExtension extends Extension
             new Reference('security.helper', ContainerInterface::NULL_ON_INVALID_REFERENCE),
         ]);
 
+        $container->registerForAutoconfiguration(McpToolInterface::class)->addTag(McpRegistryPass::TOOL_TAG);
+        $container->register(DenyingMcpToolAuthorizer::class, DenyingMcpToolAuthorizer::class);
+        $container->register(McpToolRegistry::class, McpToolRegistry::class)->setArguments([[], new ServiceLocatorArgument([])]);
+        $container->register(McpToolInvoker::class, McpToolInvoker::class)->setArguments([
+            new Reference(McpToolRegistry::class),
+            new Reference($config['hooks']['authorizer'] ?? DenyingMcpToolAuthorizer::class),
+            new Reference($config['hooks']['rate_limiter'] ?? DenyingMcpRateLimiter::class),
+            new Reference('event_dispatcher'),
+            new Reference('nowo_mcp_kit.clock'),
+            $config['limits']['max_result_bytes'],
+            $config['limits']['slow_call_ms'],
+            new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+        ]);
+
         $container->register(McpDispatcher::class, McpDispatcher::class)->setArguments([
             new Reference(self::SERVER_INFO_ID),
             new Reference(self::OPTIONS_ID),
+            new Reference(McpToolInvoker::class),
             $config['cache']['discover_ttl_ms'],
             $config['cache']['tools_list_ttl_ms'],
             $config['cache']['templates_list_ttl_ms'],

@@ -59,3 +59,28 @@ Scope: every file under `src/` plus the shipped route imports under `config/rout
 | `src/Context/McpCallContext.php` | Security hooks | FR-CTX-001 |
 | `src/Context/McpClientInfo.php` | Security hooks | FR-CTX-001 |
 | `src/Context/McpCallContextProvider.php` | Security hooks | FR-CTX-001 |
+
+## Tools, registry and envelope
+
+| Source file | Spec section | Requirement IDs |
+| --- | --- | --- |
+| `src/Tool/McpToolInterface.php` | Tools | FR-TOOL-001 |
+| `src/Tool/McpToolDefinition.php` | Tools | FR-TOOL-001, FR-TOOL-002 |
+| `src/Tool/McpToolKind.php` | Tools | FR-TOOL-002, FR-TOOL-003 |
+| `src/Tool/McpToolCall.php` | Tools | FR-TOOL-003 |
+| `src/Tool/McpToolResult.php` | Tools | FR-TOOL-003, FR-AUDIT-001 |
+| `src/Tool/McpToolError.php` | Tools | FR-TOOL-004 |
+| `src/Tool/McpUntrusted.php` | Tools | FR-ENV-001 |
+| `src/Tool/McpResourceLink.php` | Tools | FR-TOOL-003 |
+| `src/Tool/McpIdempotencyKey.php` | Tools | FR-TOOL-003 |
+| `src/Security/McpToolAuthorizerInterface.php` | Tools | FR-TOOL-002 |
+| `src/Security/DenyingMcpToolAuthorizer.php` | Tools | FR-TOOL-002 |
+| `src/DependencyInjection/Compiler/McpRegistryPass.php` | Tools | FR-TOOL-001 |
+| `src/Registry/McpToolRegistry.php` | Tools | FR-TOOL-001, FR-TOOL-002 |
+| `src/Schema/McpSchemaRules.php` | Tools | FR-TOOL-001 |
+| `src/Schema/McpSchemaNormalizer.php` | Tools | FR-TOOL-002 |
+| `src/Schema/McpSchemaValidator.php` | Tools | FR-TOOL-003 |
+| `src/Server/McpToolInvoker.php` | Tools | FR-TOOL-002..004, FR-AUDIT-001 |
+| `src/Envelope/McpEnvelope.php` | Tools | FR-ENV-001 |
+| `src/Event/McpToolCallEvent.php` | Tools | FR-AUDIT-001 |
+| `src/Event/McpCallOutcome.php` | Tools | FR-AUDIT-001 |

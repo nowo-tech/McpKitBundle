@@ -5,6 +5,8 @@
 - [Threat model](#threat-model)
 - [Transport](#transport)
 - [Authentication](#authentication)
+- [Tools](#tools)
+- [Untrusted content](#untrusted-content)
 - [Logging](#logging)
 - [Audit status](#audit-status)
 
@@ -28,9 +30,24 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - The firewall user must be the principal's user behind a secured firewall (`firewall_check`).
 - Bearer only, no cookies: CSRF does not apply (REQ-SEC-005).
 
+## Tools
+
+- Definitions are static and checked at build time: no user content in names, titles, descriptions or schemas.
+- Arguments are validated against closed schemas (unknown arguments refused); outputs are validated before sending.
+- Destructive tools are hidden and refused without the principal's tick, whatever the authorizer says.
+- Writes need an audit listener and pass the write budget before the tool runs.
+- Schemas resolve only local `$defs`; nothing is fetched.
+
+## Untrusted content
+
+Content written by people is returned under `untrusted`, behind a fixed notice from code, JSON-escaped, with hidden
+characters shown as escapes. Marking is defence in depth, never a guarantee. Hosts should advise: one token per agent,
+read-only tokens for anything unattended, the destructive tick only when needed, approval prompts in the client.
+
 ## Logging
 
-Logs carry exception classes only; never bodies, arguments, results, credentials or `clientInfo`.
+Logs carry tool names, outcomes, durations and exception classes only; never bodies, arguments, results, credentials
+or `clientInfo`.
 
 ## Audit status
 

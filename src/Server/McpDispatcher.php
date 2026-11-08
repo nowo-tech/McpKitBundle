@@ -8,6 +8,7 @@ use Nowo\McpKitBundle\Http\McpEndpointOptions;
 use Nowo\McpKitBundle\Protocol\JsonRpcError;
 use Nowo\McpKitBundle\Protocol\McpEra;
 use Nowo\McpKitBundle\Protocol\McpProtocol;
+use Nowo\McpKitBundle\Security\McpPrincipal;
 use stdClass;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -28,6 +29,7 @@ final readonly class McpDispatcher
      *
      * @param McpServerInfo $serverInfo server identity
      * @param McpEndpointOptions $options endpoint options (served versions)
+     * @param McpToolInvoker $tools tools/list and tools/call
      * @param int $discoverTtlMs `ttlMs` of `server/discover`
      * @param int $toolsListTtlMs `ttlMs` of `tools/list`
      * @param int $templatesListTtlMs `ttlMs` of `resources/templates/list`
@@ -36,6 +38,7 @@ final readonly class McpDispatcher
     public function __construct(
         private McpServerInfo $serverInfo,
         private McpEndpointOptions $options,
+        private McpToolInvoker $tools,
         private int $discoverTtlMs = 300000,
         private int $toolsListTtlMs = 300000,
         private int $templatesListTtlMs = 300000,
@@ -47,12 +50,14 @@ final readonly class McpDispatcher
      * Answers one request.
      *
      * @param McpRequest $rpc the request
+     * @param McpPrincipal $principal the authenticated principal
+     * @param Request $request the HTTP request
      *
      * @throws JsonRpcError on a protocol error
      *
      * @return stdClass the `result`
      */
-    public function dispatch(McpRequest $rpc): stdClass
+    public function dispatch(McpRequest $rpc, McpPrincipal $principal, Request $request): stdClass
     {
         $modern = $rpc->era() === McpEra::Modern;
 
@@ -60,8 +65,8 @@ final readonly class McpDispatcher
             'server/discover'          => $modern ? $this->discover($rpc) : throw JsonRpcError::methodNotFound(),
             'initialize'               => $modern ? throw JsonRpcError::methodNotFound() : $this->initialize($rpc),
             'ping'                     => $modern ? throw JsonRpcError::methodNotFound() : new stdClass(),
-            'tools/list'               => $this->listTools($rpc),
-            'tools/call'               => $this->callTool($rpc),
+            'tools/list'               => $this->listTools($rpc, $principal),
+            'tools/call'               => $this->complete($rpc, $this->tools->call($rpc, $principal, $request)),
             'resources/list'           => $this->listResources($rpc),
             'resources/templates/list' => $this->listTemplates($rpc),
             'resources/read'           => $this->readResource($rpc),
@@ -113,37 +118,20 @@ final readonly class McpDispatcher
     }
 
     /**
-     * `tools/list`.
+     * `tools/list`: the tools the principal may use, in a fixed order.
      *
      * @param McpRequest $rpc the request
+     * @param McpPrincipal $principal the principal
      *
      * @return stdClass the result
      */
-    private function listTools(McpRequest $rpc): stdClass
+    private function listTools(McpRequest $rpc, McpPrincipal $principal): stdClass
     {
         $this->refuseCursor($rpc);
         $result        = new stdClass();
-        $result->tools = [];
+        $result->tools = $this->tools->listTools($principal);
 
         return $this->complete($rpc, $result, $this->toolsListTtlMs);
-    }
-
-    /**
-     * `tools/call`.
-     *
-     * @param McpRequest $rpc the request
-     *
-     * @throws JsonRpcError always: no tool is registered yet
-     *
-     * @return stdClass the result
-     */
-    private function callTool(McpRequest $rpc): stdClass
-    {
-        if (!is_string($rpc->params->name ?? null)) {
-            throw JsonRpcError::invalidParams('Missing tool name');
-        }
-
-        throw JsonRpcError::invalidParamsOk('Unknown tool');
     }
 
     /**

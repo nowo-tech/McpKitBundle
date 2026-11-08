@@ -19,3 +19,13 @@ All notable changes to this project are documented here. The format follows
   (default available); `McpPrincipal`, `McpCredential`, `McpFirewallGuard`; `McpCallContext` on the request.
 - Configuration: `server_info`, `allowed_origins`, `legacy`, `cache`, `limits`, `maintenance_retry_after`,
   `firewall_check`, `hooks`.
+- Tool registry: `McpToolInterface` (static `definition()`, autoconfigured tag `nowo_mcp_kit.tool`),
+  `McpToolDefinition`, `McpToolKind` (read-only / additive / destructive, explicit annotations), build-time
+  `McpRegistryPass` + `McpSchemaRules` (closed schemas, bounded strings and arrays, free text only under `untrusted`,
+  keyword whitelist, local `$ref`), `McpToolAuthorizerInterface` (default allows nothing).
+- `tools/list` filtered per principal in a fixed order; `tools/call` with argument validation (opis/json-schema 2020-12,
+  `INPUT_001` / `INPUT_002`), destructive tick, write gate (audit listener required, `consumeWrite` 429), output schema
+  validation, result cap (`OUTPUT_001`), business errors as `isError` results (`McpToolError`).
+- Untrusted envelope (`McpUntrusted`, `McpEnvelope`): fixed notice, `untrusted` objects, escaped text block (C1, bidi,
+  zero-width and tag characters).
+- `McpToolCallEvent` after every call (ids and field names only); `McpIdempotencyKey` for create tools.

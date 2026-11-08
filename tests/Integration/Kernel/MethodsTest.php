@@ -12,6 +12,7 @@ use Nowo\McpKitBundle\Security\McpFirewallGuard;
 use Nowo\McpKitBundle\Server\McpDispatcher;
 use Nowo\McpKitBundle\Server\McpRequest;
 use Nowo\McpKitBundle\Server\McpServerInfo;
+use Nowo\McpKitBundle\Server\McpToolInvoker;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -23,6 +24,7 @@ use stdClass;
 #[CoversClass(McpEndpointController::class)]
 #[CoversClass(McpHeaderValidator::class)]
 #[CoversClass(McpDispatcher::class)]
+#[CoversClass(McpToolInvoker::class)]
 #[CoversClass(McpRequest::class)]
 #[CoversClass(McpServerInfo::class)]
 #[CoversClass(McpFirewallGuard::class)]

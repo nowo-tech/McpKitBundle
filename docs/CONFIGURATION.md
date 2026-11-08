@@ -59,7 +59,7 @@ prefix.
 | `hooks.*` | Interface | Without it |
 | --- | --- | --- |
 | `authenticator` | `Security\McpAuthenticatorInterface`: a `McpPrincipal` per request, or `McpAuthFailure::Invalid` (401) / `Disabled` (404) | The container does not build |
-| `authorizer` | `Security\McpToolAuthorizerInterface`: which tools and templates a principal may list and call | No tool listed; every call `TOKEN_001` |
+| `authorizer` | `Security\McpToolAuthorizerInterface`: which tools a principal may list and call (levels and ticks only) | No tool listed; every call `TOKEN_001` |
 | `rate_limiter` | `Security\McpRateLimiterInterface`: token budget, write budget, failed tokens per IP | Every request 429 |
 | `availability` | `Security\McpAvailabilityInterface`: `Available`, `Disabled` (404) or `Maintenance` (503) | Always available |
 

@@ -135,7 +135,7 @@ final readonly class McpEndpointController
         }
         $this->checkContentLength($request);
 
-        $this->authenticate($request);
+        $principal = $this->authenticate($request);
 
         $this->checkMediaTypes($request);
         $message = $this->decode($this->readBody($request));
@@ -163,7 +163,7 @@ final readonly class McpEndpointController
         $request->attributes->set(McpCallContext::ATTRIBUTE, $context);
 
         $rpc    = new McpRequest($id, $method, $params, $context);
-        $result = $this->dispatcher->dispatch($rpc);
+        $result = $this->dispatcher->dispatch($rpc, $principal, $request);
 
         return new JsonResponse(['jsonrpc' => '2.0', 'id' => $id, 'result' => $result]);
     }
@@ -215,7 +215,7 @@ final readonly class McpEndpointController
         $clientIp = (string) $request->getClientIp();
         $blocked  = $this->rateLimiter->failedTokenState($clientIp);
         if (!$blocked->accepted) {
-            throw $this->rateLimited($blocked, 'failed_tokens');
+            throw JsonRpcError::rateLimited($blocked, 'failed_tokens', $this->clock->now()->getTimestamp());
         }
         if (McpCredential::fromRequest($request) === null) {
             throw $this->unauthenticated();
@@ -238,7 +238,7 @@ final readonly class McpEndpointController
         $state = $this->rateLimiter->consume($principal);
         $request->attributes->set(self::RATE_LIMIT_ATTRIBUTE, $state);
         if (!$state->accepted) {
-            throw $this->rateLimited($state, 'requests');
+            throw JsonRpcError::rateLimited($state, 'requests', $this->clock->now()->getTimestamp());
         }
 
         return $principal;
@@ -407,21 +407,6 @@ final readonly class McpEndpointController
     private function tooLarge(): JsonRpcError
     {
         return new JsonRpcError(McpProtocol::PAYLOAD_TOO_LARGE, 'Payload too large', Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
-    }
-
-    /**
-     * 429 with `Retry-After`.
-     *
-     * @param McpRateLimitState $state the refused state
-     * @param string $limit which limit (`requests`, `writes`, `failed_tokens`)
-     *
-     * @return JsonRpcError the error
-     */
-    public function rateLimited(McpRateLimitState $state, string $limit): JsonRpcError
-    {
-        $retryAfter = max(1, $state->resetAt - $this->clock->now()->getTimestamp());
-
-        return new JsonRpcError(McpProtocol::RATE_LIMITED, 'Rate limit reached', Response::HTTP_TOO_MANY_REQUESTS, ['limit' => $limit], ['Retry-After' => (string) $retryAfter]);
     }
 
     /**
