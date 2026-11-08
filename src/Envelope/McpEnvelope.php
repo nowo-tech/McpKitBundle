@@ -35,9 +35,10 @@ final class McpEnvelope
     /**
      * Characters escaped in the text block: every control (`\p{Cc}`, DEL and C1 included) and format character
      * (`\p{Cf}`: bidi controls and marks, zero-width characters, soft hyphen, U+FFF9–FFFB, tag characters…), the
-     * variation selectors (U+FE00–FE0F, U+E0100–E01EF), the combining grapheme joiner and the Hangul fillers.
+     * variation selectors (U+FE00–FE0F, U+E0100–E01EF, Mongolian U+180B–180D, U+180F), unassigned code points
+     * (`\p{Cn}`), the combining grapheme joiner and the Hangul fillers.
      */
-    private const HIDDEN = '/[\p{Cc}\p{Cf}\x{034F}\x{115F}\x{1160}\x{3164}\x{FE00}-\x{FE0F}\x{FFA0}\x{E0100}-\x{E01EF}]/u';
+    private const HIDDEN = '/[\p{Cc}\p{Cf}\p{Cn}\x{180B}-\x{180D}\x{180F}\x{034F}\x{115F}\x{1160}\x{3164}\x{FE00}-\x{FE0F}\x{FFA0}\x{E0100}-\x{E01EF}]/u';
 
     /**
      * Converts tool data to its JSON value.

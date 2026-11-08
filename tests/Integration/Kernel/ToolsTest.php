@@ -322,14 +322,14 @@ final class ToolsTest extends KernelTestCase
 
         foreach (['schema', 'misplaced', 'big', 'utf8'] as $index => $mode) {
             $result = $this->callTool($kernel, 'risky_write', ['mode' => $mode]);
-            self::assertFalse($result['isError'], $mode);
+            self::assertTrue($result['isError'], $mode);
             self::assertArrayNotHasKey('structuredContent', $result);
-            self::assertSame(McpToolInvoker::SAVED_WITHOUT_RESULT, $result['content'][0]['text']);
-            self::assertSame(['saved' => true, 'ids' => ['note' => RiskyWriteTool::ID]], json_decode($result['content'][1]['text'], true, 512, JSON_THROW_ON_ERROR));
+            self::assertCount(1, $result['content']);
+            self::assertSame(['ECODE' => 'SAVED_001', 'err' => McpToolInvoker::SAVED_WITHOUT_RESULT, 'saved' => true, 'ids' => ['note' => RiskyWriteTool::ID]], json_decode($result['content'][0]['text'], true, 512, JSON_THROW_ON_ERROR));
 
             $event = $this->events($kernel)[$index];
             self::assertSame(McpCallOutcome::SavedWithoutResult, $event->outcome);
-            self::assertSame(['note' => RiskyWriteTool::ID], $event->auditIds);
+            self::assertSame(['note' => RiskyWriteTool::ID, 'label' => "caf\u{E9}"], $event->auditIds);
             self::assertSame(['title'], $event->changedFields);
         }
         self::assertSame(4, $this->service($kernel, RiskyWriteTool::class)->writes);

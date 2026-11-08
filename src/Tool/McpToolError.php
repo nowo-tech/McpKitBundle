@@ -7,6 +7,10 @@ namespace Nowo\McpKitBundle\Tool;
 use InvalidArgumentException;
 use RuntimeException;
 
+use function is_bool;
+use function is_finite;
+use function is_float;
+use function is_int;
 use function is_string;
 use function mb_strlen;
 use function preg_match;
@@ -23,7 +27,7 @@ final class McpToolError extends RuntimeException
      *
      * @param string $ecode error code such as `TOKEN_001` (`^[A-Z]+_[0-9]{3}$`)
      * @param string $message static message
-     * @param array<string, bool|int|string|null> $extra more fields (e.g. `current_revision`); never text written by people
+     * @param array<string, bool|float|int|string|null> $extra more fields (e.g. `current_revision`): ids, finite numbers, booleans, null
      *
      * @throws InvalidArgumentException on an invalid code, message or extra field
      */
@@ -36,11 +40,24 @@ final class McpToolError extends RuntimeException
             throw new InvalidArgumentException('McpToolError needs an ECODE such as TOKEN_001 and a static message of at most 512 printable characters.');
         }
         foreach ($extra as $key => $value) {
-            if (preg_match('/^[a-z][a-z0-9_]{0,63}$/', (string) $key) !== 1 || (is_string($value) && preg_match('/^[A-Za-z0-9._:-]{0,128}$/', $value) !== 1)) {
+            if (preg_match('/^[a-z][a-z0-9_]{0,63}$/', (string) $key) !== 1 || !$this->isIdLike($value)) {
                 throw new InvalidArgumentException('McpToolError extra fields are snake_case keys with ids, numbers, booleans or null; text written by people does not belong here.');
             }
         }
         parent::__construct($message);
+    }
+
+    /**
+     * Whether an extra value is an id, a finite number, a boolean or null.
+     *
+     * @param mixed $value the value
+     *
+     * @return bool true when allowed
+     */
+    private function isIdLike(mixed $value): bool
+    {
+        return $value === null || is_bool($value) || is_int($value) || (is_float($value) && is_finite($value))
+            || (is_string($value) && preg_match('/^[A-Za-z0-9._:-]{0,128}$/', $value) === 1);
     }
 
     /**

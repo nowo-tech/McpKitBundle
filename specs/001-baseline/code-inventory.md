@@ -97,4 +97,5 @@ Scope: every file under `src/` plus the shipped route imports under `config/rout
 | `src/Server/McpResourceReader.php` | Resources | FR-RES-001, FR-RES-002 |
 | `src/Paging/McpTextSlice.php` | Paging | FR-PAGE-001 |
 | `src/Paging/McpCursor.php` | Paging | FR-PAGE-001 |
+| `src/Paging/McpCursorSigner.php` | Paging | FR-PAGE-001 |
 | `src/Paging/McpLimits.php` | Paging | FR-PAGE-001 |
