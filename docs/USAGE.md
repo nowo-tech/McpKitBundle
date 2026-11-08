@@ -139,10 +139,12 @@ The container does not build when a tool breaks one of these (`Schema\McpSchemaR
   `maxLength`; every array with `maxItems` and `items`.
 - `outputSchema`: root `type: object`; every object closed; **free text only under `untrusted`**. Outside it a string
   needs `enum` or `const`; or `format` `uuid`, `date` or `date-time`; or `format: uri` with `maxLength` ≤ 2,048 and a
-  `pattern` starting `^https://` or `^https?://` (URLs written by people go under `untrusted`); or an anchored safe
-  `pattern` with `maxLength` ≤ 512. A safe pattern is `^…$` made of literals (letters, digits, `_ : # @ / -`), escaped
-  literals, `\d`, positive character classes of those, quantifiers, groups and alternation: no `.` wildcard, no
-  whitespace, no `\s \S \w \p`, no negated class.
+  `pattern` `^https://…$` or `^https?://…$` whose rest is itself a safe pattern (URLs written by people go under
+  `untrusted`); or an anchored safe `pattern` with `maxLength` ≤ 512. A safe pattern is `^…$` made of literals
+  (letters, digits, `_ : # @ / -`), escaped literals, `\d`, positive character classes of those with same-class
+  ranges (`a-z`, `A-Z`, `0-9`), quantifiers, and groups with alternation inside them (`^(?:open|closed)$`): no `.`
+  wildcard, no whitespace, no `\s \S \w \p`, no negated class, no top-level `|`. This is a lint, not a proof:
+  names and slugs that people choose belong under `untrusted`.
 - Both: keyword whitelist (no `x-mcp-header`), `$ref` only to `#/$defs/…`, depth ≤ 8, `oneOf` ≤ 8 branches, valid
   keyword values.
 
@@ -178,14 +180,15 @@ authorizer allows, in a fixed order (priority descending, then name), with `ttlM
 
 Business errors are tool results so the model can explain them: `{"ECODE": "...", "err": "..."}` plus extra fields such
 as `current_revision`. `McpToolError` refuses an `ECODE` other than `ABC_123`, a message that is empty, longer than 512
-characters or holds control characters, and `extra` values other than ids (`^[A-Za-z0-9._:-]{0,128}$`), numbers,
-booleans and null under snake_case keys. Anything else a tool throws is `-32603` with no detail.
+characters or holds control characters, and `extra` values other than ids (`^[A-Za-z0-9._:-]{0,128}$`), finite
+numbers, booleans and null under snake_case keys. Anything else a tool throws is `-32603` with no detail.
 
 **A committed write is never answered as an error.** When an additive or destructive tool returned but its result
-cannot be shown (output schema mismatch, envelope misuse, invalid UTF-8, above `max_result_bytes`), the answer is a
-success (`isError: false`, no `structuredContent`) with the fixed text *"The change was saved, but its result could not
-be returned. Do not repeat this call; read the item again if you need it."* and `{"saved": true, "ids": {…}}`; the
-reason is logged by class and the audit event carries outcome `saved_without_result` with the write's ids and fields.
+cannot be shown (output schema mismatch, envelope misuse, invalid UTF-8, above `max_result_bytes`), the answer is the
+error result `{"ECODE": "SAVED_001", "err": "The change was saved, but its result could not be returned. Do not repeat
+this call; read the item again if you need it.", "saved": true, "ids": {…}}` (error results are exempt from the output
+schema, so SDK clients pass it to the model; only plain-ASCII ids are echoed). The reason is logged by class and the
+audit event carries outcome `saved_without_result` with the write's ids and fields.
 Read-only tools still answer `-32603`.
 
 ### Idempotency

@@ -43,6 +43,7 @@ use function is_array;
 use function is_string;
 use function json_decode;
 use function json_encode;
+use function mb_substr;
 use function preg_match;
 use function strlen;
 
@@ -55,13 +56,16 @@ use const JSON_THROW_ON_ERROR;
  * or not allowed by the authorizer (`isError` `TOKEN_001`) → unknown argument (`INPUT_001`) → schema violation
  * (`INPUT_002`) → write gate for additive and destructive tools: no audit listener (`AUDIT_001`), write budget (429
  * `-31001`) → the tool → output schema (`-32603` on mismatch) → result cap (`OUTPUT_001`). For additive and destructive
- * tools, anything that fails after the tool returned answers a success with the write's ids and a fixed notice (the
- * write is committed). Every call that reaches the registry dispatches one {@see McpToolCallEvent}.
+ * tools, anything that fails after the tool returned answers `SAVED_001` with the write's ids and the fixed "saved, do
+ * not repeat" text (the write is committed). Every call that reaches the registry dispatches one {@see McpToolCallEvent}.
  */
 final readonly class McpToolInvoker
 {
     /** The fixed notice of a committed write whose result cannot be shown (audit IH-L2). */
     public const SAVED_WITHOUT_RESULT = 'The change was saved, but its result could not be returned. Do not repeat this call; read the item again if you need it.';
+
+    /** `ECODE` of that answer: an error result (exempt from the output schema), although the write succeeded. */
+    public const SAVED_ECODE = 'SAVED_001';
 
     private LoggerInterface $logger;
 
@@ -222,7 +226,7 @@ final readonly class McpToolInvoker
         }
         $violation = McpSchemaValidator::violation($arguments, McpSchemaNormalizer::toObject($definition->inputSchema));
         if ($violation !== null) {
-            return [McpCallOutcome::InvalidInput, new McpToolError('INPUT_002', $violation === '' ? 'Invalid arguments' : 'Invalid field: ' . $violation)];
+            return [McpCallOutcome::InvalidInput, new McpToolError('INPUT_002', $violation === '' ? 'Invalid arguments' : 'Invalid field: ' . mb_substr($violation, 0, 400))];
         }
         if ($definition->kind->writes() && !$this->events->hasListeners(McpKitEvents::TOOL_CALL)) {
             return [McpCallOutcome::ToolError, new McpToolError('AUDIT_001', 'Audit is not configured')];
@@ -278,8 +282,8 @@ final readonly class McpToolInvoker
     }
 
     /**
-     * Answers a committed write whose result cannot be shown (output schema, envelope, encoding or size): a success with
-     * the write's ids and a fixed notice, never an error that would invite a duplicate retry.
+     * Answers a committed write whose result cannot be shown (output schema, envelope, encoding or size): `isError` with
+     * `SAVED_001`, the write's ids and the fixed "saved, do not repeat" text, so no client retries it as a failure.
      *
      * @param Throwable $throwable why the result cannot be shown
      * @param McpToolResult $result the tool's result
@@ -295,12 +299,18 @@ final readonly class McpToolInvoker
         $this->logger->error('MCP: write saved, but its result could not be returned.', ['bundle' => 'nowo_mcp_kit', 'tool' => $definition->name, 'exception_class' => $throwable::class]);
         $this->audit(McpCallOutcome::SavedWithoutResult, null, $result, $principal, $definition, $context, $started);
 
+        // An error result: exempt from the output schema, so SDK clients pass it to the model (audit IH-L2r). Only ids that
+        // are plain ASCII are echoed, so encoding cannot fail and no second event can follow (IH-I8).
+        $ids = [];
+        foreach ($result->auditIds as $key => $id) {
+            if (preg_match('/^[a-z][a-z0-9_]{0,63}$/', (string) $key) === 1 && preg_match('/^[A-Za-z0-9._:-]{1,128}$/', $id) === 1) {
+                $ids[(string) $key] = $id;
+            }
+        }
+
         $answer          = new stdClass();
-        $answer->content = [
-            ['type' => 'text', 'text' => self::SAVED_WITHOUT_RESULT],
-            ['type' => 'text', 'text' => McpEnvelope::text(['saved' => true, 'ids' => (object) $result->auditIds], true)],
-        ];
-        $answer->isError = false;
+        $answer->content = [['type' => 'text', 'text' => McpEnvelope::text(['ECODE' => self::SAVED_ECODE, 'err' => self::SAVED_WITHOUT_RESULT, 'saved' => true, 'ids' => (object) $ids], true)]];
+        $answer->isError = true;
 
         return $answer;
     }

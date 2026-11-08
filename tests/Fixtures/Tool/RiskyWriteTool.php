@@ -42,7 +42,8 @@ final class RiskyWriteTool implements McpToolInterface
     public function call(McpToolCall $call): McpToolResult
     {
         ++$this->writes;
-        $ids = ['note' => self::ID];
+        // The second id is not plain ASCII: it is left out of the answer, never a reason to fail.
+        $ids = ['note' => self::ID, 'label' => "caf\xC3\xA9"];
 
         return match ($call->arguments['mode']) {
             'ok'        => McpToolResult::ok(['id' => self::ID], $ids, ['title']),

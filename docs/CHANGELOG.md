@@ -38,3 +38,8 @@ All notable changes to this project are documented here. The format follows
   (outcome `saved_without_result`); trusted output strings need safe anchored patterns, http(s) URIs or fixed formats;
   the output root is an object; the escape set covers every `\p{Cc}` / `\p{Cf}`, variation selectors and Hangul
   fillers; `McpToolError` and `McpResourceLink` validate their values; `McpKitEvents::TOOL_CALL`.
+- Audit IH delta (S2): the saved-without-result answer is an error result `SAVED_001` (exempt from the output schema)
+  with plain-ASCII ids only (IH-L2r, IH-I8); safe patterns refuse top-level alternation and mixed-class ranges, and a
+  trusted URI pattern must be safe after its `https://` prefix (IH-L3r, IH-I10); `McpToolError` extras are scalars
+  only and `INPUT_002` paths are cut to 400 characters (IH-I9); the escape set adds U+180B–180D, U+180F and `\p{Cn}`
+  (IH-I11).
