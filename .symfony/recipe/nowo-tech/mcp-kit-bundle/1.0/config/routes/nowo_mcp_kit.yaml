@@ -1,0 +1,3 @@
+# The MCP endpoint (empty while nowo_mcp_kit.enabled is false). Keep it outside any locale prefix.
+nowo_mcp_kit:
+    resource: '@NowoMcpKitBundle/config/routes/mcp.yaml'

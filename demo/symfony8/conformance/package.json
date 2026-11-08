@@ -1,0 +1,8 @@
+{
+    "name": "mcp-kit-demo-conformance",
+    "private": true,
+    "description": "Pinned official MCP conformance runner for make test-conformance.",
+    "dependencies": {
+        "@modelcontextprotocol/conformance": "0.2.0-alpha.12"
+    }
+}

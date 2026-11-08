@@ -1,0 +1,43 @@
+# Expected failures of the official MCP conformance runner (@modelcontextprotocol/conformance 0.2.0-alpha.12)
+# against demo/symfony8 in the conformance profile, requirement set 2026-07-28.
+# Per-check entries only; each is a feature v1 does not offer by design (spec 219 "Out of scope").
+# The runner fails CI on a regression and on a stale entry. Not-scored scenarios (extensions, pending) are not listed.
+server:
+  # Prompts are not offered, so prompts/list has no caching hints.
+  - caching:sep-2549-prompts-list-caching-hints
+  # completion/complete is not offered (v1 has no completions).
+  - completion-complete:completion-complete
+  # Multi round-trip requests (InputRequiredResult) are not used in v1.
+  - input-required-result-ignore-extra-params:sep-2322-ignore-unexpected-params
+  - input-required-result-missing-input-response:sep-2322-missing-response-rerequests
+  - input-required-result-basic-elicitation:sep-2322-elicitation-incomplete
+  - input-required-result-basic-list-roots:sep-2322-list-roots-incomplete
+  - input-required-result-basic-sampling:sep-2322-sampling-incomplete
+  - input-required-result-capability-check:sep-2322-respect-client-capabilities
+  - input-required-result-multi-round:sep-2322-multi-round-r1
+  - input-required-result-multiple-input-requests:sep-2322-multiple-inputs-incomplete
+  - input-required-result-non-tool-request:sep-2322-non-tool-incomplete
+  - input-required-result-request-state:sep-2322-request-state-incomplete
+  - input-required-result-result-type:sep-2322-result-type-included
+  - input-required-result-tampered-state:sep-2322-reject-tampered-state
+  # Prompts are not offered (v1 serves tools and resources only).
+  - prompts-get-embedded-resource:prompts-get-embedded-resource
+  - prompts-get-simple:prompts-get-simple
+  - prompts-get-with-args:prompts-get-with-args
+  - prompts-get-with-image:prompts-get-with-image
+  - prompts-list:prompts-list
+  # Resource contents are JSON text only; no blobs in v1.
+  - resources-read-binary:resources-read-binary
+  # The kit never requires client capabilities, so -32021 is never answered (no diagnostic tool).
+  - server-stateless:sep-2575-missing-capability-http-400
+  - server-stateless:sep-2575-server-rejects-undeclared-capability
+  # Text and structured content only: no file bytes through tools in v1.
+  - tools-call-audio:tools-call-audio
+  # Text, structured content and resource links only in v1.
+  - tools-call-embedded-resource:tools-call-embedded-resource
+  # Text and structured content only: no file bytes through tools in v1.
+  - tools-call-image:tools-call-image
+  # Text, structured content and resource links only in v1.
+  - tools-call-mixed-content:tools-call-mixed-content
+  # JSON answers only: no SSE, so no progress notifications.
+  - tools-call-with-progress:tools-call-with-progress

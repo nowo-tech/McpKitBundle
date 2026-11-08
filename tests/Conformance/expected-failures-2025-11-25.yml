@@ -1,0 +1,41 @@
+# Expected failures of the official MCP conformance runner (@modelcontextprotocol/conformance 0.2.0-alpha.12)
+# against demo/symfony8 in the conformance profile, requirement set 2025-11-25.
+# Per-check entries only; each is a feature v1 does not offer by design (spec 219 "Out of scope").
+# The runner fails CI on a regression and on a stale entry. Not-scored scenarios (extensions, pending) are not listed.
+server:
+  # completion/complete is not offered (v1 has no completions).
+  - completion-complete:completion-complete
+  # No server-to-client requests: elicitation is not used.
+  - elicitation-sep1034-defaults:elicitation-sep1034-general
+  - elicitation-sep1330-enums:elicitation-sep1330-general
+  # Logging is deprecated in 2026-07-28 and not offered; logging/setLevel is -32601.
+  - logging-set-level:logging-set-level
+  # Prompts are not offered (v1 serves tools and resources only).
+  - prompts-get-embedded-resource:prompts-get-embedded-resource
+  - prompts-get-simple:prompts-get-simple
+  - prompts-get-with-args:prompts-get-with-args
+  - prompts-get-with-image:prompts-get-with-image
+  - prompts-list:prompts-list
+  # Resource contents are JSON text only; no blobs in v1.
+  - resources-read-binary:resources-read-binary
+  # Subscriptions are not offered (no SSE in v1).
+  - resources-subscribe:resources-subscribe
+  - resources-unsubscribe:resources-unsubscribe
+  # Text and structured content only: no file bytes through tools in v1.
+  - tools-call-audio:tools-call-audio
+  # No server-to-client requests: elicitation is not used.
+  - tools-call-elicitation:tools-call-elicitation
+  # Text, structured content and resource links only in v1.
+  - tools-call-embedded-resource:tools-call-embedded-resource
+  # Text and structured content only: no file bytes through tools in v1.
+  - tools-call-image:tools-call-image
+  # Text, structured content and resource links only in v1.
+  - tools-call-mixed-content:tools-call-mixed-content
+  # No server-to-client requests: sampling is not used.
+  - tools-call-sampling:tools-call-sampling
+  # Logging is not offered.
+  - tools-call-with-logging:tools-call-with-logging
+  # JSON answers only: no SSE, so no progress notifications.
+  - tools-call-with-progress:tools-call-with-progress
+  # No sessions (stateless by design): the legacy session checks of the SSE scenario only warn.
+  - server-sse-multiple-streams:server-sse-multiple-streams-session

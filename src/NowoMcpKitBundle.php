@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Nowo\McpKitBundle;
 
+use Nowo\McpKitBundle\DependencyInjection\Compiler\McpRegistryPass;
 use Nowo\McpKitBundle\DependencyInjection\NowoMcpKitExtension;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
@@ -22,6 +24,17 @@ use function dirname;
  */
 final class NowoMcpKitBundle extends Bundle
 {
+    /**
+     * Registers the tool registry pass.
+     *
+     * @param ContainerBuilder $container container being built
+     */
+    public function build(ContainerBuilder $container): void
+    {
+        parent::build($container);
+        $container->addCompilerPass(new McpRegistryPass());
+    }
+
     /**
      * Bundle extension (`nowo_mcp_kit`).
      *

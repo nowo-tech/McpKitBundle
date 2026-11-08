@@ -81,6 +81,7 @@ The sections below state **behavior**; this subsection states **intent** in back
 | REQ-CS-001 | `Makefile` `validate-phpdoc` | PHPDoc on every class and public method of `src/`. |
 | REQ-TEST-011 | `demo/Makefile` `demo-smoke` | Demo boots and answers HTTP 200 on `:8219`. |
 | REQ-RUNTIME-001 | `demo/symfony8/docker/frankenphp/Caddyfile*` | Timeout hierarchy (PHP < Caddy). |
+| Q-O7 (spec 219) | `demo/symfony8/Makefile` `test-conformance`, CI job `conformance` | Official MCP conformance runner, pinned, per-check baseline. |
 
 When you change scripted behavior, **update the existing `REQ-*` comment** if the ID still matches the rule, or **add a new `REQ-*`** and document it here and in the PR description.
 

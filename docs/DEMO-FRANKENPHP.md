@@ -21,6 +21,7 @@ Runtime selection is via **`FRANKENPHP_MODE`** (`classic` | `worker`), not `APP_
 - [Worker mode and kernel reset](#worker-mode-and-kernel-reset)
 - [Timeout hierarchy](#timeout-hierarchy)
 - [Development stack in demos](#development-stack-in-demos)
+- [Tokens, tools and the conformance profile](#tokens-tools-and-the-conformance-profile)
 - [Demo smoke (REQ-TEST-011)](#demo-smoke-req-test-011)
 
 ## Quick start
@@ -56,6 +57,28 @@ The bundle makes no outbound I/O; MCP answers are JSON only (no stream holds a w
 
 - Symfony Web Profiler and debug mode
 - `nowo-tech/twig-inspector-bundle` and `nowo-tech/hot-reload-bundle` (dev only)
+
+## Tokens, tools and the conformance profile
+
+Throwaway tokens (placeholders, never real secrets):
+
+| Token | Person | Levels | Destructive tick |
+| --- | --- | --- | --- |
+| `demo-read-token-change-me` | ada | notes: read | no |
+| `demo-edit-token-change-me` | ada | notes: edit | no |
+| `demo-full-token-change-me` | grace | notes: edit | yes |
+
+Tools: `note_list` (paged with `McpCursor`), `note_get` (body paged with `McpTextSlice`), `note_create` (additive,
+`idempotency_key`), `note_archive` (destructive). Template: `demo://note/{id}`. One seeded note holds injection text
+(fake closing markers, bidi and zero-width characters) to show the `untrusted` envelope. Notes, rate-limit windows and
+idempotency keys live in the app cache (no database). The demo allows its own origins (`http://localhost:8219`,
+`http://127.0.0.1:8219`); a real host usually keeps `allowed_origins` empty.
+
+**Conformance profile** (`MCP_CONFORMANCE=1`, used by `make test-conformance`): the official runner sends no credential,
+so `docker/frankenphp/Caddyfile.conformance` (worker mode) adds the conformance token, which the demo accepts only in
+this profile. The runner's fixture tools (`test_simple_text`, `test_error_handling`, `test_logging_tool`,
+`test_streaming_elicitation`, and `test_saved_without_result` for the SDK e2e) and templates (`test://static-text`, `test://template/{id}/data`) are listed only for that
+token.
 
 ## Demo smoke (REQ-TEST-011)
 

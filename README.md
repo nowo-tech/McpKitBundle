@@ -58,9 +58,13 @@ See [docs/USAGE.md](docs/USAGE.md).
 
 - `demo/symfony8` — Symfony **8.1** (FrankenPHP PHP **8.5**, worker mode); host port **8219** by default.
 
+The demo serves note tools (`note_list`, `note_get`, `note_create`, `note_archive`) and the `demo://note/{id}` template
+with throwaway tokens, a seeded note full of injection text, and a conformance profile for the official MCP runner.
+
 ```bash
-make -C demo up-symfony8          # http://localhost:8219
+make -C demo up-symfony8          # http://localhost:8219 (client setup on the home page)
 make demo-smoke                   # boot, HTTP 200, down (REQ-TEST-011)
+make test-conformance             # official MCP conformance runner (pinned), 2026-07-28 and 2025-11-25
 ```
 
 Runtime mode is **`FRANKENPHP_MODE`** (`worker` default, or `classic`) — see [docs/DEMO-FRANKENPHP.md](docs/DEMO-FRANKENPHP.md).
@@ -103,7 +107,8 @@ make release-check
 
 ## Tests and coverage
 
-- Tests: PHPUnit (PHP) — unit tests plus kernel integration tests
+- Tests: PHPUnit (PHP) — unit tests plus kernel integration tests (every pipeline step, both eras, tools, resources,
+  worker mode); the official MCP conformance runner against the demo (required CI gate, per-check baseline)
 - PHP: 100% (gate enforced in CI by `composer test-coverage-100`, no exclusions)
 - TS/JS: N/A
 - Python: N/A

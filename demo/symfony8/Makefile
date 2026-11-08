@@ -14,7 +14,7 @@ help:
 	@echo "  make test-coverage    Run tests with coverage"
 	@echo "  make update-bundle    Update nowo-tech/mcp-kit-bundle and clear cache"
 	@echo "  make verify           HTTP 200 on the demo home"
-	@echo "  make test-conformance Official MCP conformance runner (both revisions)"
+	@echo "  make test-conformance Official MCP conformance runner (pinned), both revisions, per-check baseline"
 
 composer-install:
 	@echo "Installing Composer dependencies (ephemeral container)..."
@@ -89,9 +89,37 @@ verify: ensure-up
 	if [ "$$code" != "200" ]; then echo "Demo check failed: $$code"; exit 1; fi; \
 	echo "Demo check OK ($$code)"
 
-# Official MCP conformance runner, pinned (S4).
+# Official MCP conformance runner, pinned exactly in conformance/package-lock.json (owner decision Q-O7: a required
+# gate with a per-check baseline). The Node image is pinned by digest.
+# Boots the demo in the conformance profile (MCP_CONFORMANCE=1: Caddy adds the conformance token, worker mode) and runs
+# the requirement sets of both protocol revisions, then the TypeScript SDK e2e. Bumping either is a deliberate PR.
+CONFORMANCE_REVISIONS ?= 2026-07-28 2025-11-25
+# node:22-alpine, pinned by digest.
+NODE_IMAGE ?= node@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202
+
 test-conformance:
-	@echo "test-conformance: added in S4"
+	@if [ ! -f .env ]; then cp .env.example .env 2>/dev/null || true; fi
+	@$(MAKE) composer-install
+	MCP_CONFORMANCE=1 $(COMPOSE) up -d --build --force-recreate
+	@PORT=$$(grep "^PORT=" .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); PORT=$${PORT:-8219}; \
+	i=0; until curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:$$PORT/mcp | grep -q '^4'; do \
+		i=$$((i+1)); if [ $$i -ge 60 ]; then echo "Demo did not answer"; $(COMPOSE) logs --tail=50 php; $(COMPOSE) down; exit 1; fi; sleep 2; \
+	done; \
+	status=0; \
+	for rev in $(CONFORMANCE_REVISIONS); do \
+		echo "== MCP conformance, requirement set $$rev"; \
+		docker run --rm --network host --user "$$(id -u):$$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/npm \
+			-v "$(CURDIR)/../../tests/Conformance:/baseline:ro" -v "$(CURDIR)/conformance:/w" -w /w $(NODE_IMAGE) \
+			sh -c "npm ci --no-fund --no-audit --loglevel=error && ./node_modules/.bin/conformance server \
+			--url http://localhost:$$PORT/mcp --requirements $$rev \
+			--expected-failures /baseline/expected-failures-$$rev.yml" || status=1; \
+	done; \
+	echo "== TypeScript SDK e2e (official client, pinned in e2e-sdk/package-lock.json)"; \
+	docker run --rm --network host --user "$$(id -u):$$(id -g)" -e HOME=/tmp -e npm_config_cache=/tmp/npm \
+		-e MCP_URL=http://localhost:$$PORT/mcp -v "$(CURDIR)/e2e-sdk:/w" -w /w $(NODE_IMAGE) \
+		sh -c 'npm ci --no-fund --no-audit --loglevel=error && node e2e.mjs' || status=1; \
+	$(COMPOSE) down; \
+	exit $$status
 
 # REQ-MAKE-008: update-deps (optional: monorepo helper absent on standalone GitHub Actions checkout)
 SERVICE_PHP := php

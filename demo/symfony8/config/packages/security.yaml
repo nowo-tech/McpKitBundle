@@ -1,12 +1,20 @@
 security:
     providers:
-        demo_tokens:
+        demo_users:
             id: App\Mcp\DemoUserProvider
     firewalls:
         dev:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        # The MCP endpoint: stateless, a demo bearer token makes its person the security user. A bad token passes
+        # through with no user and the bundle answers 401 itself; no access_control on this path.
+        mcp:
+            pattern: ^/mcp$
+            stateless: true
+            provider: demo_users
+            custom_authenticators:
+                - App\Security\DemoTokenAuthenticator
         main:
             lazy: true
             stateless: true
-            provider: demo_tokens
+            provider: demo_users
