@@ -42,7 +42,7 @@ final readonly class NoteListTool implements McpToolInterface
                     'id'        => ['type' => 'string', 'format' => 'uuid'],
                     'untrusted' => ['type' => 'object', 'properties' => ['title' => ['type' => 'string']]],
                 ]]],
-                'next_cursor' => ['type' => ['string', 'null'], 'pattern' => '^[A-Za-z0-9_-]+$'],
+                'next_cursor' => ['type' => ['string', 'null'], 'pattern' => '^[A-Za-z0-9_-]+$', 'maxLength' => 512],
             ]],
             ['notes:read'],
             false,

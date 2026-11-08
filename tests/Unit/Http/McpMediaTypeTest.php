@@ -49,6 +49,9 @@ final class McpMediaTypeTest extends TestCase
         yield 'json refused' => ['application/json;q=0', false];
         yield 'json malformed q' => ['application/json;q=high', false];
         yield 'json with other param' => ['application/json; level=1', true];
+        yield 'json refused despite any' => ['application/json;q=0, */*', false];
+        yield 'specific json beats refused family' => ['application/*;q=0, application/json', true];
+        yield 'family refused despite any' => ['application/*;q=0, */*', false];
     }
 
     #[Test]

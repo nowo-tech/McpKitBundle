@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Nowo\McpKitBundle\Server;
 
 use JsonException;
+use LengthException;
 use LogicException;
 use Nowo\McpKitBundle\Context\McpCallContext;
 use Nowo\McpKitBundle\Envelope\McpEnvelope;
 use Nowo\McpKitBundle\Event\McpCallOutcome;
+use Nowo\McpKitBundle\Event\McpKitEvents;
 use Nowo\McpKitBundle\Event\McpToolCallEvent;
 use Nowo\McpKitBundle\Protocol\JsonRpcError;
 use Nowo\McpKitBundle\Protocol\McpProtocol;
@@ -52,11 +54,15 @@ use const JSON_THROW_ON_ERROR;
  * A call runs, in order: unknown name (`-32602`) → arguments not an object (`-32602`) → destructive without the tick,
  * or not allowed by the authorizer (`isError` `TOKEN_001`) → unknown argument (`INPUT_001`) → schema violation
  * (`INPUT_002`) → write gate for additive and destructive tools: no audit listener (`AUDIT_001`), write budget (429
- * `-31001`) → the tool → output schema (`-32603` on mismatch) → result cap (`OUTPUT_001`). Every call that reaches the
- * registry dispatches one {@see McpToolCallEvent}.
+ * `-31001`) → the tool → output schema (`-32603` on mismatch) → result cap (`OUTPUT_001`). For additive and destructive
+ * tools, anything that fails after the tool returned answers a success with the write's ids and a fixed notice (the
+ * write is committed). Every call that reaches the registry dispatches one {@see McpToolCallEvent}.
  */
 final readonly class McpToolInvoker
 {
+    /** The fixed notice of a committed write whose result cannot be shown (audit IH-L2). */
+    public const SAVED_WITHOUT_RESULT = 'The change was saved, but its result could not be returned. Do not repeat this call; read the item again if you need it.';
+
     private LoggerInterface $logger;
 
     /**
@@ -174,7 +180,15 @@ final readonly class McpToolInvoker
                 return $this->finish(McpCallOutcome::ToolError, $toolError, null, $principal, $definition, $context, $started);
             }
 
-            return $this->success($result, $principal, $definition, $context, $started);
+            if (!$definition->kind->writes()) {
+                return $this->success($result, $principal, $definition, $context, $started);
+            }
+            try {
+                return $this->success($result, $principal, $definition, $context, $started);
+            } catch (Throwable $throwable) {
+                // The write is committed: answering an error would invite a retry that writes twice (audit IH-L2).
+                return $this->savedWithoutResult($throwable, $result, $principal, $definition, $context, $started);
+            }
         } catch (JsonRpcError $jsonRpcError) {
             throw $jsonRpcError;
         } catch (Throwable $throwable) {
@@ -210,7 +224,7 @@ final readonly class McpToolInvoker
         if ($violation !== null) {
             return [McpCallOutcome::InvalidInput, new McpToolError('INPUT_002', $violation === '' ? 'Invalid arguments' : 'Invalid field: ' . $violation)];
         }
-        if ($definition->kind->writes() && !$this->events->hasListeners(McpToolCallEvent::class)) {
+        if ($definition->kind->writes() && !$this->events->hasListeners(McpKitEvents::TOOL_CALL)) {
             return [McpCallOutcome::ToolError, new McpToolError('AUDIT_001', 'Audit is not configured')];
         }
 
@@ -252,9 +266,41 @@ final readonly class McpToolInvoker
         $answer->isError           = false;
 
         if (strlen(json_encode($answer, JSON_THROW_ON_ERROR)) > $this->maxResultBytes) {
+            if ($definition->kind->writes()) {
+                throw new LengthException('Tool result above max_result_bytes.');
+            }
+
             return $this->finish(McpCallOutcome::ToolError, new McpToolError('OUTPUT_001', 'Result too large; narrow the request'), $result, $principal, $definition, $context, $started);
         }
         $this->audit(McpCallOutcome::Ok, null, $result, $principal, $definition, $context, $started);
+
+        return $answer;
+    }
+
+    /**
+     * Answers a committed write whose result cannot be shown (output schema, envelope, encoding or size): a success with
+     * the write's ids and a fixed notice, never an error that would invite a duplicate retry.
+     *
+     * @param Throwable $throwable why the result cannot be shown
+     * @param McpToolResult $result the tool's result
+     * @param McpPrincipal $principal the principal
+     * @param McpToolDefinition $definition the tool
+     * @param McpCallContext $context the call context
+     * @param int $started `hrtime` at the start
+     *
+     * @return stdClass the `CallToolResult`
+     */
+    private function savedWithoutResult(Throwable $throwable, McpToolResult $result, McpPrincipal $principal, McpToolDefinition $definition, McpCallContext $context, int $started): stdClass
+    {
+        $this->logger->error('MCP: write saved, but its result could not be returned.', ['bundle' => 'nowo_mcp_kit', 'tool' => $definition->name, 'exception_class' => $throwable::class]);
+        $this->audit(McpCallOutcome::SavedWithoutResult, null, $result, $principal, $definition, $context, $started);
+
+        $answer          = new stdClass();
+        $answer->content = [
+            ['type' => 'text', 'text' => self::SAVED_WITHOUT_RESULT],
+            ['type' => 'text', 'text' => McpEnvelope::text(['saved' => true, 'ids' => (object) $result->auditIds], true)],
+        ];
+        $answer->isError = false;
 
         return $answer;
     }

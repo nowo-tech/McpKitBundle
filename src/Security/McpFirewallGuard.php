@@ -11,7 +11,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Checks that the firewall stands behind the principal: the security user is the principal's user and the request went
- * through a secured firewall. Tools read access through the security token, so a principal the firewall does not stand
+ * through a secured, stateless firewall (without SecurityBundle's helper: a firewall context and no started session). Tools read access through the security token, so a principal the firewall does not stand
  * behind would be judged as someone else, or as nobody.
  */
 final readonly class McpFirewallGuard
@@ -32,7 +32,7 @@ final readonly class McpFirewallGuard
     }
 
     /**
-     * Tells whether the request's security user is the principal's user, behind a secured firewall.
+     * Tells whether the request's security user is the principal's user, behind a secured, stateless firewall.
      *
      * @param Request $request the MCP request
      * @param McpPrincipal $principal the authenticated principal
@@ -50,10 +50,14 @@ final readonly class McpFirewallGuard
         }
 
         if ($this->security instanceof Security) {
-            return $this->security->getFirewallConfig($request)?->isSecurityEnabled() === true;
+            $firewall = $this->security->getFirewallConfig($request);
+
+            // Stateless too: a stateful firewall would store the bearer-authenticated token in a session and hand the
+            // agent token's holder a full web session (audit IH-L1).
+            return $firewall?->isSecurityEnabled() === true && $firewall->isStateless();
         }
 
-        return $request->attributes->has('_firewall_context');
+        return $request->attributes->has('_firewall_context') && (!$request->hasSession() || !$request->getSession()->isStarted());
     }
 
     /**

@@ -10,6 +10,8 @@ namespace Nowo\McpKitBundle\Event;
 enum McpCallOutcome: string
 {
     case Ok = 'ok';
+    /** A write was committed but its result could not be returned (output schema, envelope, encoding, size). */
+    case SavedWithoutResult = 'saved_without_result';
     /** A business refusal of the tool (`McpToolError`), or `AUDIT_001` / `OUTPUT_001`. */
     case ToolError = 'tool_error';
     /** The token may not use the tool (`TOKEN_001`). */

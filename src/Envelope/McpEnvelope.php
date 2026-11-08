@@ -19,6 +19,7 @@ use function sprintf;
 
 use const JSON_HEX_AMP;
 use const JSON_HEX_TAG;
+use const JSON_INVALID_UTF8_SUBSTITUTE;
 use const JSON_THROW_ON_ERROR;
 use const JSON_UNESCAPED_SLASHES;
 use const JSON_UNESCAPED_UNICODE;
@@ -26,13 +27,17 @@ use const JSON_UNESCAPED_UNICODE;
 /**
  * The untrusted envelope: turns a tool's data into the JSON value of `structuredContent` and the text block that mirrors
  * it. {@see McpUntrusted} groups become `untrusted` objects; the text block is JSON, so a value can never close a quote
- * or a fake marker, and characters that hide text from people (C1 controls, bidi controls, zero-width characters,
- * Unicode tag characters) are shown as `\uXXXX` escapes. The decoded JSON is identical.
+ * or a fake marker, and characters that hide text from people (controls, format characters, variation selectors, Hangul
+ * fillers) are shown as `\uXXXX` escapes. The decoded JSON is identical.
  */
 final class McpEnvelope
 {
-    /** Characters escaped in the text block. */
-    private const HIDDEN = '/[\x{80}-\x{9F}\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2060}-\x{2064}\x{2066}-\x{2069}\x{FEFF}\x{E0000}-\x{E007F}]/u';
+    /**
+     * Characters escaped in the text block: every control (`\p{Cc}`, DEL and C1 included) and format character
+     * (`\p{Cf}`: bidi controls and marks, zero-width characters, soft hyphen, U+FFF9–FFFB, tag characters…), the
+     * variation selectors (U+FE00–FE0F, U+E0100–E01EF), the combining grapheme joiner and the Hangul fillers.
+     */
+    private const HIDDEN = '/[\p{Cc}\p{Cf}\x{034F}\x{115F}\x{1160}\x{3164}\x{FE00}-\x{FE0F}\x{FFA0}\x{E0100}-\x{E01EF}]/u';
 
     /**
      * Converts tool data to its JSON value.
@@ -55,12 +60,14 @@ final class McpEnvelope
      * The text form of a JSON value.
      *
      * @param mixed $json the JSON value
+     * @param bool $substituteInvalidUtf8 replace invalid UTF-8 instead of failing
      *
      * @return string the text block
      */
-    public static function text(mixed $json): string
+    public static function text(mixed $json, bool $substituteInvalidUtf8 = false): string
     {
-        $encoded = json_encode($json, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+        $flags   = JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP;
+        $encoded = json_encode($json, $substituteInvalidUtf8 ? $flags | JSON_INVALID_UTF8_SUBSTITUTE : $flags);
 
         return (string) preg_replace_callback(self::HIDDEN, static fn (array $match): string => self::escape($match[0]), $encoded);
     }

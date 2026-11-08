@@ -75,6 +75,17 @@ final class McpSchemaRulesTest extends TestCase
         yield 'unknown type' => [self::tool($object(['q' => ['type' => 'file']])), 'unknown type'];
         yield 'list as schema' => [self::tool($object(['q' => [1, 2]])), 'must be an object'];
         yield 'too many branches' => [self::tool($object(['q' => ['oneOf' => [['const' => 1], ['const' => 2], ['const' => 3], ['const' => 4], ['const' => 5], ['const' => 6], ['const' => 7], ['const' => 8], ['const' => 9]]]])), 'at most 8'];
+        yield 'wildcard pattern' => [self::tool(output: $object(['t' => ['type' => 'string', 'pattern' => '^.*$', 'maxLength' => 10]])), 'free text'];
+        yield 'whitespace class pattern' => [self::tool(output: $object(['t' => ['type' => 'string', 'pattern' => '^[\\s\\S]+$', 'maxLength' => 10]])), 'free text'];
+        yield 'negated class pattern' => [self::tool(output: $object(['t' => ['type' => 'string', 'pattern' => '^[^x]+$', 'maxLength' => 10]])), 'free text'];
+        yield 'unanchored pattern' => [self::tool(output: $object(['t' => ['type' => 'string', 'pattern' => '[a-z]+', 'maxLength' => 10]])), 'free text'];
+        yield 'pattern without maxLength' => [self::tool(output: $object(['t' => ['type' => 'string', 'pattern' => '^[a-z]+$']])), 'free text'];
+        yield 'pattern with long maxLength' => [self::tool(output: $object(['t' => ['type' => 'string', 'pattern' => '^[a-z]+$', 'maxLength' => 513]])), 'free text'];
+        yield 'uri without pattern' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'maxLength' => 100]])), 'format": "uri" needs'];
+        yield 'data uri pattern' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'pattern' => '^data:', 'maxLength' => 100]])), 'format": "uri" needs'];
+        yield 'long uri' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://', 'maxLength' => 4096]])), 'format": "uri" needs'];
+        yield 'free format' => [self::tool(output: $object(['e' => ['type' => 'string', 'format' => 'email', 'pattern' => '^[a-z]+$', 'maxLength' => 10]])), 'free text'];
+        yield 'output root not object' => [self::tool(output: ['type' => 'array', 'items' => ['type' => 'integer']]), 'root must be "type": "object"'];
         yield 'free text in output' => [self::tool(output: $object(['title' => ['type' => 'string']])), 'free text must sit under "untrusted"'];
         yield 'untrusted not object' => [self::tool(output: $object(['untrusted' => ['type' => 'string']])), 'must be "type": "object"'];
         yield 'free text in output defs' => [self::tool(output: ['type' => 'object', 'additionalProperties' => false, '$defs' => ['t' => ['type' => 'string']]]), 'free text'];
@@ -109,7 +120,8 @@ final class McpSchemaRulesTest extends TestCase
         $output = ['type' => 'object', 'additionalProperties' => false, 'properties' => [
             'id'     => ['type' => 'string', 'format' => 'uuid'],
             'at'     => ['type' => ['string', 'null'], 'format' => 'date-time'],
-            'number' => ['type' => 'string', 'pattern' => '^#[0-9]+$'],
+            'number' => ['type' => 'string', 'pattern' => '^#[0-9]+$', 'maxLength' => 20],
+            'link'   => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://app\\.example/', 'maxLength' => 2048],
             'status' => ['type' => 'string', 'enum' => ['open', 'done']],
             'ref'    => ['$ref' => '#/$defs/row'],
             'rows'   => ['type' => 'array', 'items' => ['type' => 'object', 'additionalProperties' => false, 'properties' => ['untrusted' => ['type' => 'object', 'properties' => ['t' => ['type' => 'string']]]]]],
@@ -159,6 +171,7 @@ final class McpSchemaRulesTest extends TestCase
         yield 'empty regex' => [self::template('demo://x/{id}', ['id' => '']), 'valid regular expression'];
         yield 'broken regex' => [self::template('demo://x/{id}', ['id' => '[0-9']), 'valid regular expression'];
         yield 'delimiter in regex' => [self::template('demo://x/{id}', ['id' => 'a#b']), 'valid regular expression'];
+        yield 'template output root' => [self::template(output: ['type' => 'array', 'items' => ['type' => 'integer']]), 'root must be'];
         yield 'group name clash' => [self::template('demo://x/{id}', ['id' => '(?P<id>[0-9]+)']), 'does not compile'];
         yield 'free text output' => [self::template(output: ['type' => 'object', 'additionalProperties' => false, 'properties' => ['t' => ['type' => 'string']]]), 'free text'];
     }

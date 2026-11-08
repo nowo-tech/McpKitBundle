@@ -1114,7 +1114,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         slow_call_ms?: int|Param, // Calls taking at least this long are logged at warning level (0: every call). // Default: 2000
  *     },
  *     maintenance_retry_after?: int|Param, // Retry-After seconds of the 503 answered in maintenance. // Default: 60
- *     firewall_check?: bool|Param, // Refuse (500) when the firewall user is not the principal user or the firewall is not secured. // Default: true
+ *     firewall_check?: bool|Param, // Refuse (500) when the firewall user is not the principal user or the firewall is not secured and stateless. False is for tests only and is refused unless kernel.debug is true. // Default: true
  *     hooks?: array{ // Service ids of the host hooks.
  *         authenticator?: scalar|Param|null, // McpAuthenticatorInterface; required when enabled. // Default: null
  *         authorizer?: scalar|Param|null, // McpToolAuthorizerInterface; default: no tool allowed. // Default: null

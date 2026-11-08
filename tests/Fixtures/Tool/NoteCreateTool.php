@@ -47,7 +47,7 @@ final class NoteCreateTool implements McpToolInterface
     {
         $this->calls[] = $call;
         if ($call->arguments['title'] === 'conflict') {
-            throw new McpToolError('WIKI_409', 'Stale revision', ['current_revision' => 13, 'ECODE' => 'IGNORED']);
+            throw new McpToolError('WIKI_409', 'Stale revision', ['current_revision' => 13, 'base' => 'rev-12']);
         }
 
         return McpToolResult::ok(['id' => '5d1f0c2a-3b4c-4d5e-8f60-718293a4b5c6', 'status' => 'created', 'version' => 1], ['note' => '5d1f0c2a-3b4c-4d5e-8f60-718293a4b5c6'], ['title']);

@@ -50,7 +50,7 @@ abstract class KernelTestCase extends TestCase
      * @param array<string, string> $services extra service id => class (autoconfigured, public)
      * @param array<string, mixed>|null $security security configuration (null: the default stateless firewall)
      */
-    protected function bootKernel(array $config = [], array $services = [], ?array $security = null, ?Closure $routes = null, bool $withSecurity = true): McpKitTestKernel
+    protected function bootKernel(array $config = [], array $services = [], ?array $security = null, ?Closure $routes = null, bool $withSecurity = true, bool $debug = false): McpKitTestKernel
     {
         $id     = (string) preg_replace('/\W+/', '_', static::class . '_' . $this->name() . '_' . count($this->kernels));
         $config = array_replace_recursive([
@@ -85,6 +85,7 @@ abstract class KernelTestCase extends TestCase
                 $routes->import('@NowoMcpKitBundle/config/routes/mcp.yaml');
             },
             $withSecurity,
+            $debug,
         );
         $kernel->boot();
         $this->kernels[] = $kernel;
