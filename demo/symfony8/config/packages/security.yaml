@@ -1,0 +1,12 @@
+security:
+    providers:
+        demo_tokens:
+            id: App\Mcp\DemoUserProvider
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+        main:
+            lazy: true
+            stateless: true
+            provider: demo_tokens

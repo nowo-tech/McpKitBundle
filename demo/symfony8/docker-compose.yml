@@ -1,0 +1,37 @@
+name: mcp-kit-bundle-demo-symfony-8
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app
+    ports:
+      # Bound to loopback: the demo runs APP_ENV=dev (profiler) with throwaway demo tokens.
+      - "127.0.0.1:${PORT:-8219}:80"
+    volumes:
+      - .:/app
+      - ../..:/var/mcp-kit-bundle
+      - ./docker/frankenphp/Caddyfile.dev:/etc/frankenphp/Caddyfile.dev
+      - ./docker/php-dev.ini:/usr/local/etc/php/conf.d/99-dev.ini:ro
+      - composer-cache:/root/.composer/cache
+    environment:
+      - COMPOSER_ALLOW_SUPERUSER=1
+      - APP_ENV=${APP_ENV:-dev}
+      - APP_DEBUG=${APP_DEBUG:-1}
+      - APP_SECRET=${APP_SECRET:-demo-secret}
+      - FRANKENPHP_MODE=${FRANKENPHP_MODE:-worker}
+      - MCP_CONFORMANCE=${MCP_CONFORMANCE:-0}
+    # Mitigate Docker/WSL DNS failures resolving repo.packagist.org (composer curl error 6) — REQ-DEMO-009.
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - mcp-kit-demo-network
+
+volumes:
+  composer-cache:
+    driver: local
+
+networks:
+  mcp-kit-demo-network:
+    driver: bridge

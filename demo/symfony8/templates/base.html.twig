@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}MCP Kit Bundle demo{% endblock %}</title>
+        {% block stylesheets %}
+            <style>
+                :root { --bg: #f5f7fb; --card: #fff; --ink: #1d2433; --muted: #5b6475; --line: #dde3ee; --accent: #2457d6; }
+                * { box-sizing: border-box; }
+                body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+                header.masthead { background: #121a2b; color: #fff; padding: 14px 28px; display: flex; align-items: center; gap: 18px; }
+                header.masthead .badge { margin-left: auto; font-size: 12px; background: #2b3a5c; padding: 4px 10px; border-radius: 999px; }
+                main { max-width: 1100px; margin: 0 auto; padding: 24px 28px 80px; }
+                .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; }
+                .card h2 { font-size: 16px; margin: 0 0 6px; }
+                .card p, .card li { color: var(--muted); font-size: 14px; }
+                pre { margin: 0; background: #0f1524; color: #d8e1f5; border-radius: 8px; padding: 12px 14px; font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; overflow: auto; }
+                code { background: #eef2fa; padding: 1px 5px; border-radius: 4px; }
+            </style>
+        {% endblock %}
+    </head>
+    <body>
+        <header class="masthead">
+            <strong>MCP Kit Bundle</strong>
+            <span class="badge">Symfony 8.1 · FrankenPHP</span>
+        </header>
+        <main>
+            {% block body %}{% endblock %}
+        </main>
+    </body>
+</html>
