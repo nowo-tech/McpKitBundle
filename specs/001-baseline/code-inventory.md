@@ -84,3 +84,4 @@ Scope: every file under `src/` plus the shipped route imports under `config/rout
 | `src/Envelope/McpEnvelope.php` | Tools | FR-ENV-001 |
 | `src/Event/McpToolCallEvent.php` | Tools | FR-AUDIT-001 |
 | `src/Event/McpCallOutcome.php` | Tools | FR-AUDIT-001 |
+| `src/Event/McpKitEvents.php` | Tools | FR-AUDIT-001 |

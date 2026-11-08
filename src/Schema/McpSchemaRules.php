@@ -23,8 +23,11 @@ use function is_string;
 use function mb_strlen;
 use function preg_match;
 use function sprintf;
+use function str_ends_with;
 use function str_replace;
 use function str_starts_with;
+use function strlen;
+use function substr;
 
 /**
  * Compile-time rules for tool definitions. A violation stops the container build, so a tool cannot ship with a schema
@@ -51,7 +54,21 @@ final class McpSchemaRules
 
     private const TYPES = ['object', 'array', 'string', 'integer', 'number', 'boolean', 'null'];
 
-    private const TRUSTED_FORMATS = ['uuid', 'date', 'date-time', 'uri'];
+    /** Formats that cannot carry free text. */
+    private const TRUSTED_FORMATS = ['uuid', 'date', 'date-time'];
+
+    /** Longest trusted string with a `pattern` (cursors fit). */
+    private const MAX_PATTERNED_LENGTH = 512;
+
+    /** Longest trusted `format: uri` string. */
+    private const MAX_URI_LENGTH = 2048;
+
+    /**
+     * One token of a safe trusted pattern body: a literal (letters, digits, `_ : # @ / -`), an escaped literal, `\d`, a
+     * positive character class of those characters and ranges (a `.` is literal inside a class), a quantifier, a group
+     * or an alternation. No `.` wildcard, no whitespace, no `\s \S \w \W \p`, no negated class.
+     */
+    private const SAFE_PATTERN_TOKEN = '~\G(?:[A-Za-z0-9_:#@/-]|\\\\[.\-/#:+?*()\[\]{}^$|]|\\\\d|\[(?:[A-Za-z0-9]-[A-Za-z0-9]|[A-Za-z0-9_:#@/.-]|\\\\[.\-/])+\]|\{[0-9]{1,3}(?:,[0-9]{0,3})?\}|[?+*]|\((?:\?:)?|\)|\|)~';
 
     /**
      * Checks a tool definition.
@@ -71,6 +88,7 @@ final class McpSchemaRules
             throw new LogicException('inputSchema: the root must be "type": "object" with "additionalProperties": false.');
         }
         self::walk($input, 'inputSchema#', true, false, 0);
+        self::checkOutputRoot($definition->outputSchema);
         self::walk($definition->outputSchema, 'outputSchema#', false, false, 0);
     }
 
@@ -208,8 +226,8 @@ final class McpSchemaRules
             if ($input && !is_int($schema['maxLength'] ?? null)) {
                 throw new LogicException($path . ': a string argument needs "maxLength".');
             }
-            if (!$input && !in_array($schema['format'] ?? null, self::TRUSTED_FORMATS, true) && !isset($schema['pattern'])) {
-                throw new LogicException($path . ': free text must sit under "untrusted" (outside it, a string needs "format" uuid/date/date-time/uri, "enum", "const" or "pattern").');
+            if (!$input) {
+                self::checkTrustedString($schema, $path);
             }
         }
         if (in_array('array', $types, true)) {
@@ -222,6 +240,75 @@ final class McpSchemaRules
         }
         if (in_array('object', $types, true) && ($schema['additionalProperties'] ?? null) !== false) {
             throw new LogicException($path . ': an object needs "additionalProperties": false.');
+        }
+    }
+
+    /**
+     * A string outside `untrusted` must not be able to carry free text (audit IH-L3): `format` uuid, date or date-time; or
+     * `format: uri` limited to http(s) with `maxLength` <= 2,048 and an anchored `^https?://` pattern; or an anchored
+     * pattern of safe tokens (no wildcard, no whitespace) with `maxLength` <= 512.
+     *
+     * @param array<string, mixed> $schema the schema
+     * @param string $path the path
+     *
+     * @throws LogicException when the string could carry free text
+     */
+    private static function checkTrustedString(array $schema, string $path): void
+    {
+        $format  = $schema['format'] ?? null;
+        $pattern = $schema['pattern'] ?? null;
+        $max     = $schema['maxLength'] ?? null;
+        if (in_array($format, self::TRUSTED_FORMATS, true)) {
+            return;
+        }
+        if ($format === 'uri') {
+            if (!is_int($max) || $max > self::MAX_URI_LENGTH || !is_string($pattern) || preg_match('~^\\^https\\??://~', $pattern) !== 1) {
+                throw new LogicException($path . ': a trusted "format": "uri" needs "maxLength" <= ' . self::MAX_URI_LENGTH . ' and a "pattern" anchored with "^https://" or "^https?://" (URLs written by people go under "untrusted").');
+            }
+
+            return;
+        }
+        if ($format !== null || !is_string($pattern) || !self::isSafePattern($pattern) || !is_int($max) || $max > self::MAX_PATTERNED_LENGTH) {
+            throw new LogicException($path . ': free text must sit under "untrusted" (outside it, a string needs "format" uuid/date/date-time, "enum", "const", an http(s) "uri", or an anchored safe "pattern" with "maxLength" <= ' . self::MAX_PATTERNED_LENGTH . ').');
+        }
+    }
+
+    /**
+     * Whether a pattern is `^…$` made only of safe tokens.
+     *
+     * @param string $pattern the pattern
+     *
+     * @return bool true when safe
+     */
+    private static function isSafePattern(string $pattern): bool
+    {
+        if (strlen($pattern) < 3 || !str_starts_with($pattern, '^') || !str_ends_with($pattern, '$') || str_ends_with($pattern, '\\$')) {
+            return false;
+        }
+        $body   = substr($pattern, 1, -1);
+        $offset = 0;
+        $length = strlen($body);
+        while ($offset < $length) {
+            if (preg_match(self::SAFE_PATTERN_TOKEN, $body, $match, 0, $offset) !== 1) {
+                return false;
+            }
+            $offset += strlen($match[0]);
+        }
+
+        return true;
+    }
+
+    /**
+     * The output root must be an object (MCP: `structuredContent` of a tool with an output schema is an object).
+     *
+     * @param array<string, mixed> $schema the output schema
+     *
+     * @throws LogicException otherwise
+     */
+    private static function checkOutputRoot(array $schema): void
+    {
+        if (($schema['type'] ?? null) !== 'object') {
+            throw new LogicException('outputSchema: the root must be "type": "object".');
         }
     }
 

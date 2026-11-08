@@ -22,6 +22,7 @@ use Nowo\McpKitBundle\Tests\Fixtures\Tool\MisbehavingTool;
 use Nowo\McpKitBundle\Tests\Fixtures\Tool\NoteArchiveTool;
 use Nowo\McpKitBundle\Tests\Fixtures\Tool\NoteCreateTool;
 use Nowo\McpKitBundle\Tests\Fixtures\Tool\NoteGetTool;
+use Nowo\McpKitBundle\Tests\Fixtures\Tool\RiskyWriteTool;
 use Nowo\McpKitBundle\Tool\McpToolCall;
 use Nowo\McpKitBundle\Tool\McpToolDefinition;
 use Nowo\McpKitBundle\Tool\McpToolResult;
@@ -60,6 +61,7 @@ final class ToolsTest extends KernelTestCase
             NoteCreateTool::class    => NoteCreateTool::class,
             NoteArchiveTool::class   => NoteArchiveTool::class,
             MisbehavingTool::class   => MisbehavingTool::class,
+            RiskyWriteTool::class    => RiskyWriteTool::class,
             FixtureAuthorizer::class => FixtureAuthorizer::class,
         ];
         if ($withAudit) {
@@ -113,7 +115,7 @@ final class ToolsTest extends KernelTestCase
         self::assertSame(['note_get', 'misbehave'], array_column($ada, 'name'));
 
         $grace = $this->json($this->modern($kernel, 'tools/list', [], [], 'tok-grace'))['result']['tools'];
-        self::assertSame(['note_get', 'misbehave', 'note_archive', 'note_create'], array_column($grace, 'name'));
+        self::assertSame(['note_get', 'misbehave', 'note_archive', 'note_create', 'risky_write'], array_column($grace, 'name'));
 
         $create = $grace[3];
         self::assertSame('Create a note', $create['title']);
@@ -179,7 +181,7 @@ final class ToolsTest extends KernelTestCase
         $kernel = $this->boot();
 
         self::assertSame(['ECODE' => 'ACCESS_001', 'err' => 'Not found'], $this->errorBody($this->callTool($kernel, 'note_get', ['id' => '0b8f3c5e-6a1d-4c7e-9f2a-1b3c5d7e9f02'])));
-        self::assertSame(['ECODE' => 'WIKI_409', 'err' => 'Stale revision', 'current_revision' => 13], $this->errorBody($this->callTool($kernel, 'note_create', ['title' => 'conflict'])));
+        self::assertSame(['ECODE' => 'WIKI_409', 'err' => 'Stale revision', 'current_revision' => 13, 'base' => 'rev-12'], $this->errorBody($this->callTool($kernel, 'note_create', ['title' => 'conflict'])));
         self::assertSame(McpCallOutcome::ToolError, $this->events($kernel)[1]->outcome);
         self::assertSame('WIKI_409', $this->events($kernel)[1]->ecode);
     }
@@ -311,5 +313,26 @@ final class ToolsTest extends KernelTestCase
         self::assertArrayNotHasKey('resultType', $result);
         self::assertFalse($result['isError']);
         self::assertNull($this->events($kernel)[0]->context->client);
+    }
+
+    #[Test]
+    public function aCommittedWriteIsNeverAnsweredAsAnError(): void
+    {
+        $kernel = $this->boot(['limits' => ['max_result_bytes' => 2048]]);
+
+        foreach (['schema', 'misplaced', 'big', 'utf8'] as $index => $mode) {
+            $result = $this->callTool($kernel, 'risky_write', ['mode' => $mode]);
+            self::assertFalse($result['isError'], $mode);
+            self::assertArrayNotHasKey('structuredContent', $result);
+            self::assertSame(McpToolInvoker::SAVED_WITHOUT_RESULT, $result['content'][0]['text']);
+            self::assertSame(['saved' => true, 'ids' => ['note' => RiskyWriteTool::ID]], json_decode($result['content'][1]['text'], true, 512, JSON_THROW_ON_ERROR));
+
+            $event = $this->events($kernel)[$index];
+            self::assertSame(McpCallOutcome::SavedWithoutResult, $event->outcome);
+            self::assertSame(['note' => RiskyWriteTool::ID], $event->auditIds);
+            self::assertSame(['title'], $event->changedFields);
+        }
+        self::assertSame(4, $this->service($kernel, RiskyWriteTool::class)->writes);
+        self::assertFalse($this->callTool($kernel, 'risky_write', ['mode' => 'ok'])['isError']);
     }
 }

@@ -78,4 +78,20 @@ final class McpEnvelopeTest extends TestCase
         $handle = fopen('php://memory', 'r');
         McpEnvelope::convert(['h' => $handle]);
     }
+
+    #[Test]
+    public function invisibleCarriersAreEscaped(): void
+    {
+        $value = "a\u{FE0F}b\u{E0101}c\u{061C}d\u{00AD}e\u{3164}f\u{007F}g\u{FFF9}h\u{034F}i\u{1D173}j";
+        $text  = McpEnvelope::text(['v' => $value]);
+
+        self::assertSame('{"v":"a\\ufe0fb\\udb40\\udd01c\\u061cd\\u00ade\\u3164f\\u007fg\\ufff9h\\u034fi\\ud834\\udd73j"}', $text);
+        self::assertSame(['v' => $value], json_decode($text, true, 512, JSON_THROW_ON_ERROR));
+    }
+
+    #[Test]
+    public function invalidUtf8CanBeSubstituted(): void
+    {
+        self::assertSame("{\"v\":\"\u{FFFD}(\"}", McpEnvelope::text(['v' => "\xC3\x28"], true));
+    }
 }

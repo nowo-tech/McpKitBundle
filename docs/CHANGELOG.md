@@ -32,3 +32,7 @@ All notable changes to this project are documented here. The format follows
 - Untrusted envelope (`McpUntrusted`, `McpEnvelope`): fixed notice, `untrusted` objects, escaped text block (C1, bidi,
   zero-width and tag characters).
 - `McpToolCallEvent` after every call (ids and field names only); `McpIdempotencyKey` for create tools.
+- Audit IH (S2): a committed write whose result cannot be shown answers a success with its ids and a fixed notice
+  (outcome `saved_without_result`); trusted output strings need safe anchored patterns, http(s) URIs or fixed formats;
+  the output root is an object; the escape set covers every `\p{Cc}` / `\p{Cf}`, variation selectors and Hangul
+  fillers; `McpToolError` and `McpResourceLink` validate their values; `McpKitEvents::TOOL_CALL`.

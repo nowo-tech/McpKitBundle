@@ -39,11 +39,16 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - Destructive tools are hidden and refused without the principal's tick, whatever the authorizer says.
 - Writes need an audit listener and pass the write budget before the tool runs.
 - Schemas resolve only local `$defs`; nothing is fetched.
+- A committed write is never reported as an error, so an agent is not invited to repeat it.
+- Tools receive the whole `Request` (through `McpToolCall`); they must not read credentials from it.
+- A tool declared `ReadOnly` that writes skips the audit gate and the write budget: the kit cannot detect it, so host
+  review must.
 
 ## Untrusted content
 
-Content written by people is returned under `untrusted`, behind a fixed notice from code, JSON-escaped, with hidden
-characters shown as escapes. Marking is defence in depth, never a guarantee. Hosts should advise: one token per agent,
+Content written by people is returned under `untrusted`, behind a fixed notice from code, JSON-escaped, with control,
+format and other invisible characters shown as escapes. The build refuses output schemas that could carry free text
+outside `untrusted` (any wildcard pattern, free formats, non-http(s) URIs). Marking is defence in depth, never a guarantee. Hosts should advise: one token per agent,
 read-only tokens for anything unattended, the destructive tick only when needed, approval prompts in the client.
 
 ## Logging
@@ -64,5 +69,6 @@ or `clientInfo`.
 
 ## Audit status
 
-Audit IH (REQ-SEC-004), S1: Pass / Low; IH-L1 (stateless firewall), IH-I1, IH-I3, IH-I5 (negotiated legacy version)
-and IH-I7 fixed — re-verification pending.
+Audit IH (REQ-SEC-004), S1 and S2: Pass / Low. Fixed: IH-L1 (stateless firewall), IH-L2 (committed writes),
+IH-L3 (free-text loopholes), IH-L4 (escape set), IH-I1, IH-I3, IH-I4, IH-I5, IH-I7. IH-I2 and IH-I6 accepted as
+documented. Re-verification pending.
