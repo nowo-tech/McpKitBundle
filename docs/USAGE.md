@@ -7,6 +7,8 @@
 - [Methods](#methods)
 - [Hooks](#hooks)
 - [Tools](#tools)
+- [Resource templates](#resource-templates)
+- [Paging and caps](#paging-and-caps)
 - [Untrusted content](#untrusted-content)
 - [Audit event](#audit-event)
 - [Call context](#call-context)
@@ -180,6 +182,55 @@ as `current_revision`. Anything else a tool throws is `-32603` with no detail.
 MCP has no idempotency header. Create tools can take the optional `idempotency_key` argument
 (`McpIdempotencyKey::schema()`); read it with `$call->idempotencyKey()` and pass it to your idempotency store, scoped to
 the token.
+
+## Resource templates
+
+A resource template is a service implementing `Tool\McpResourceTemplateInterface` (tag
+`nowo_mcp_kit.resource_template`), with a static `McpResourceTemplateDefinition`: name, URI template (RFC 6570 level
+1, e.g. `beacon://task/{id}`), one regular expression per variable, title, description, output schema (same rules as
+tool outputs), `requires` for the authorizer, and a priority.
+
+```php
+public static function definition(): McpResourceTemplateDefinition
+{
+    return new McpResourceTemplateDefinition(
+        'task',
+        'beacon://task/{id}',
+        'Task',
+        'One task as JSON.',
+        ['id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'],
+        ['type' => 'object', 'additionalProperties' => false, 'required' => ['id'], 'properties' => [
+            'id'        => ['type' => 'string', 'format' => 'uuid'],
+            'untrusted' => ['type' => 'object'],
+        ]],
+        ['tasks:my_tasks'],
+    );
+}
+
+public function read(McpResourceRead $read): McpToolResult
+{
+    // $read->variables['id'] already matched its regular expression
+}
+```
+
+- `resources/templates/list` lists the templates the authorizer allows (`cacheScope: private`).
+- `resources/list` is always empty: enumerating everything a token reaches is expensive and helps nobody.
+- `resources/read` matches the URI against the allowed templates in order. Anything unmatched, hidden, or refused by
+  the template (`McpToolError`) answers the same `-32602` "Resource not found". Contents are one
+  `application/json` text; when it holds untrusted values its first key is `notice`. `ttlMs: 0`.
+- A read dispatches `McpToolCallEvent` with kind `ReadOnly` and the template name.
+- Tool results can link to resources with `McpResourceLink`.
+
+## Paging and caps
+
+| Helper | Use |
+| --- | --- |
+| `Paging\McpTextSlice::of($text, $offset, $limits->maxTextChars)` | One page of a long text in characters: `text` (put it under `untrusted`) and `paging()` = `truncated`, `next_offset`, `total` (outside) |
+| `Paging\McpCursor::encode(['o' => 50])` / `decode($cursor)` / `schema()` | Opaque base64url cursors of flat scalar maps; a malformed cursor is `INPUT_002` "Invalid field: cursor". A cursor is a position, not a credential |
+| `Paging\McpLimits` (service) | `maxTextChars` (`limits.max_text_chars`, 100,000) and `maxListRows` (`limits.max_list_rows`, 50) |
+
+A whole tool result above `limits.max_result_bytes` is refused (`OUTPUT_001`); resource contents above it answer
+`-32602` "Resource too large".
 
 ## Untrusted content
 

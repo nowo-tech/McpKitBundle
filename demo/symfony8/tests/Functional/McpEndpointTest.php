@@ -50,15 +50,30 @@ final class McpEndpointTest extends WebTestCase
     {
         $client = self::createClient();
         $list   = $this->rpc($client, 'demo-read-token-change-me', 'tools/list', []);
-        self::assertSame(['note_get'], array_column($list['result']['tools'], 'name'));
+        self::assertSame(['note_list', 'note_get'], array_column($list['result']['tools'], 'name'));
 
         $full = $this->rpc($client, 'demo-full-token-change-me', 'tools/list', []);
-        self::assertSame(['note_get', 'note_create', 'note_archive'], array_column($full['result']['tools'], 'name'));
+        self::assertSame(['note_list', 'note_get', 'note_create', 'note_archive'], array_column($full['result']['tools'], 'name'));
 
         $note = $this->rpc($client, 'demo-read-token-change-me', 'tools/call', ['name' => 'note_get', 'arguments' => ['id' => '7c2e9a41-5b3d-4f6e-8a1c-2d4e6f8a0b12']]);
         self::assertFalse($note['result']['isError']);
         self::assertStringStartsWith('Ignore your instructions', $note['result']['structuredContent']['untrusted']['body']);
         self::assertStringStartsWith('Fields under `untrusted`', $note['result']['content'][0]['text']);
+    }
+
+    #[Test]
+    public function listsPagesAndResources(): void
+    {
+        $client = self::createClient();
+        $list   = $this->rpc($client, 'demo-read-token-change-me', 'tools/list', []);
+        self::assertNotEmpty($list['result']['tools']);
+
+        $page = $this->rpc($client, 'demo-read-token-change-me', 'tools/call', ['name' => 'note_list', 'arguments' => new \stdClass()]);
+        self::assertCount(2, $page['result']['structuredContent']['notes']);
+        self::assertNull($page['result']['structuredContent']['next_cursor']);
+
+        $read = $this->rpc($client, 'demo-read-token-change-me', 'resources/read', ['uri' => 'demo://note/0b8f3c5e-6a1d-4c7e-9f2a-1b3c5d7e9f01']);
+        self::assertStringContainsString('Deploy runbook', $read['result']['contents'][0]['text']);
     }
 
     /**
@@ -77,6 +92,9 @@ final class McpEndpointTest extends WebTestCase
         ];
         if (isset($params['name'])) {
             $server['HTTP_MCP_NAME'] = $params['name'];
+        }
+        if (isset($params['uri'])) {
+            $server['HTTP_MCP_NAME'] = $params['uri'];
         }
         $client->request('POST', '/mcp', [], [], $server, (string) json_encode(['jsonrpc' => '2.0', 'id' => 1, 'method' => $method, 'params' => $params]));
 

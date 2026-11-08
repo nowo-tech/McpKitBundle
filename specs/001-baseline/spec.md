@@ -75,3 +75,12 @@ validation, the untrusted envelope, size caps and an audit event. The host regis
   characters.
 - **FR-AUDIT-001** One `McpToolCallEvent` per call that reaches the registry, ids and field names only; a throwing
   listener does not change the answer.
+
+### Resources and paging
+
+- **FR-RES-001** Resource templates are services with a static definition (RFC 6570 level 1, one regex per variable),
+  checked at build time; `resources/templates/list` lists those the authorizer allows; `resources/list` is empty.
+- **FR-RES-002** `resources/read` matches allowed templates in order; unmatched, hidden or refused URIs answer the same
+  `-32602`; contents carry the envelope (`notice` first) and `ttlMs: 0`.
+- **FR-PAGE-001** `McpTextSlice` pages text by characters; `McpCursor` encodes and strictly decodes opaque cursors;
+  `McpLimits` exposes the configured page sizes.

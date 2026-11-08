@@ -6,6 +6,7 @@ namespace App\Mcp;
 
 use Nowo\McpKitBundle\Security\McpPrincipal;
 use Nowo\McpKitBundle\Security\McpToolAuthorizerInterface;
+use Nowo\McpKitBundle\Tool\McpResourceTemplateDefinition;
 use Nowo\McpKitBundle\Tool\McpToolDefinition;
 
 /**
@@ -13,7 +14,7 @@ use Nowo\McpKitBundle\Tool\McpToolDefinition;
  */
 final readonly class DemoAuthorizer implements McpToolAuthorizerInterface
 {
-    public function allows(McpPrincipal $principal, McpToolDefinition $definition): bool
+    public function allows(McpPrincipal $principal, McpToolDefinition|McpResourceTemplateDefinition $definition): bool
     {
         $level = $principal->grants['notes'] ?? null;
         foreach ($definition->requires as $grant) {

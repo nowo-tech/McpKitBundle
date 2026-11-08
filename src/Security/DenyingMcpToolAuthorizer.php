@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\McpKitBundle\Security;
 
+use Nowo\McpKitBundle\Tool\McpResourceTemplateDefinition;
 use Nowo\McpKitBundle\Tool\McpToolDefinition;
 
 /**
@@ -15,11 +16,11 @@ final readonly class DenyingMcpToolAuthorizer implements McpToolAuthorizerInterf
      * Refuses.
      *
      * @param McpPrincipal $principal the principal
-     * @param McpToolDefinition $definition the tool
+     * @param McpResourceTemplateDefinition|McpToolDefinition $definition the tool
      *
      * @return bool false
      */
-    public function allows(McpPrincipal $principal, McpToolDefinition $definition): bool
+    public function allows(McpPrincipal $principal, McpToolDefinition|McpResourceTemplateDefinition $definition): bool
     {
         return false;
     }

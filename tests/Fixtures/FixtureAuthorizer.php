@@ -6,6 +6,7 @@ namespace Nowo\McpKitBundle\Tests\Fixtures;
 
 use Nowo\McpKitBundle\Security\McpPrincipal;
 use Nowo\McpKitBundle\Security\McpToolAuthorizerInterface;
+use Nowo\McpKitBundle\Tool\McpResourceTemplateDefinition;
 use Nowo\McpKitBundle\Tool\McpToolDefinition;
 
 use function in_array;
@@ -17,7 +18,7 @@ final class FixtureAuthorizer implements McpToolAuthorizerInterface
 {
     public bool $allowEverything = false;
 
-    public function allows(McpPrincipal $principal, McpToolDefinition $definition): bool
+    public function allows(McpPrincipal $principal, McpToolDefinition|McpResourceTemplateDefinition $definition): bool
     {
         if ($this->allowEverything) {
             return true;

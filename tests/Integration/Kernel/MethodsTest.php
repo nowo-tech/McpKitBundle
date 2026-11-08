@@ -11,6 +11,7 @@ use Nowo\McpKitBundle\Protocol\McpProtocol;
 use Nowo\McpKitBundle\Security\McpFirewallGuard;
 use Nowo\McpKitBundle\Server\McpDispatcher;
 use Nowo\McpKitBundle\Server\McpRequest;
+use Nowo\McpKitBundle\Server\McpResourceReader;
 use Nowo\McpKitBundle\Server\McpServerInfo;
 use Nowo\McpKitBundle\Server\McpToolInvoker;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,6 +26,7 @@ use stdClass;
 #[CoversClass(McpHeaderValidator::class)]
 #[CoversClass(McpDispatcher::class)]
 #[CoversClass(McpToolInvoker::class)]
+#[CoversClass(McpResourceReader::class)]
 #[CoversClass(McpRequest::class)]
 #[CoversClass(McpServerInfo::class)]
 #[CoversClass(McpFirewallGuard::class)]

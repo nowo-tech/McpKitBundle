@@ -11,6 +11,9 @@ use Nowo\McpKitBundle\Tests\Fixtures\Tool\MisbehavingTool;
 use Nowo\McpKitBundle\Tests\Fixtures\Tool\NoteArchiveTool;
 use Nowo\McpKitBundle\Tests\Fixtures\Tool\NoteCreateTool;
 use Nowo\McpKitBundle\Tests\Fixtures\Tool\NoteGetTool;
+use Nowo\McpKitBundle\Tests\Fixtures\Tool\NoteResource;
+use Nowo\McpKitBundle\Tests\Fixtures\Tool\SecretResource;
+use Nowo\McpKitBundle\Tool\McpResourceTemplateDefinition;
 use Nowo\McpKitBundle\Tool\McpToolDefinition;
 use Nowo\McpKitBundle\Tool\McpToolKind;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -23,6 +26,7 @@ use function str_repeat;
 #[CoversClass(McpSchemaRules::class)]
 #[CoversClass(McpSchemaNormalizer::class)]
 #[CoversClass(McpToolDefinition::class)]
+#[CoversClass(McpResourceTemplateDefinition::class)]
 final class McpSchemaRulesTest extends TestCase
 {
     private const INPUT  = ['type' => 'object', 'additionalProperties' => false, 'properties' => []];
@@ -121,5 +125,50 @@ final class McpSchemaRulesTest extends TestCase
         $schema = McpSchemaNormalizer::toObject(['type' => 'object', 'properties' => [], 'required' => [], 'items' => [], 'oneOf' => [[], 'x'], 'enum' => ['a'], 'default' => ['k' => 'v'], '$defs' => ['d' => [], 'e' => true]]);
 
         self::assertSame('{"type":"object","properties":{},"required":[],"items":{},"oneOf":[{},"x"],"enum":["a"],"default":{"k":"v"},"$defs":{"d":{},"e":true}}', json_encode($schema));
+    }
+
+    /**
+     * @param array<string, string> $variables
+     * @param array<string, mixed> $output
+     */
+    private static function template(string $uri = 'demo://x/{id}', array $variables = ['id' => '[0-9]+'], array $output = self::OUTPUT, string $name = 'tpl'): McpResourceTemplateDefinition
+    {
+        return new McpResourceTemplateDefinition($name, $uri, 'T', 'D', $variables, $output);
+    }
+
+    #[Test]
+    public function fixtureTemplatesPass(): void
+    {
+        McpSchemaRules::checkTemplate(NoteResource::definition());
+        McpSchemaRules::checkTemplate(SecretResource::definition());
+        self::assertSame('#^demo\\://x/(?P<id>[0-9]+)$#Du', self::template()->pattern());
+    }
+
+    /**
+     * @return iterable<string, array{McpResourceTemplateDefinition, string}>
+     */
+    public static function templateViolations(): iterable
+    {
+        yield 'bad name' => [self::template(name: 'Tpl'), 'must match'];
+        yield 'no scheme' => [self::template('x/{id}'), 'uriTemplate must be'];
+        yield 'space' => [self::template('demo://a b/{id}'), 'uriTemplate must be'];
+        yield 'level 2 operator' => [self::template('demo://x/{+id}'), 'uriTemplate must be'];
+        yield 'missing variable regex' => [self::template('demo://x/{id}/{n}'), 'exactly one entry'];
+        yield 'extra variable' => [self::template('demo://x/{id}', ['id' => '[0-9]+', 'n' => '[0-9]+']), 'exactly one entry'];
+        yield 'repeated placeholder' => [self::template('demo://x/{id}/{id}'), 'exactly one entry'];
+        yield 'empty regex' => [self::template('demo://x/{id}', ['id' => '']), 'valid regular expression'];
+        yield 'broken regex' => [self::template('demo://x/{id}', ['id' => '[0-9']), 'valid regular expression'];
+        yield 'delimiter in regex' => [self::template('demo://x/{id}', ['id' => 'a#b']), 'valid regular expression'];
+        yield 'group name clash' => [self::template('demo://x/{id}', ['id' => '(?P<id>[0-9]+)']), 'does not compile'];
+        yield 'free text output' => [self::template(output: ['type' => 'object', 'additionalProperties' => false, 'properties' => ['t' => ['type' => 'string']]]), 'free text'];
+    }
+
+    #[Test]
+    #[DataProvider('templateViolations')]
+    public function templateViolationsStopTheBuild(McpResourceTemplateDefinition $definition, string $message): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage($message);
+        McpSchemaRules::checkTemplate($definition);
     }
 }

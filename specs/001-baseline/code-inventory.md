@@ -84,3 +84,16 @@ Scope: every file under `src/` plus the shipped route imports under `config/rout
 | `src/Envelope/McpEnvelope.php` | Tools | FR-ENV-001 |
 | `src/Event/McpToolCallEvent.php` | Tools | FR-AUDIT-001 |
 | `src/Event/McpCallOutcome.php` | Tools | FR-AUDIT-001 |
+
+## Resources and paging
+
+| Source file | Spec section | Requirement IDs |
+| --- | --- | --- |
+| `src/Tool/McpResourceTemplateInterface.php` | Resources | FR-RES-001 |
+| `src/Tool/McpResourceTemplateDefinition.php` | Resources | FR-RES-001, FR-RES-002 |
+| `src/Tool/McpResourceRead.php` | Resources | FR-RES-002 |
+| `src/Registry/McpResourceTemplateRegistry.php` | Resources | FR-RES-001 |
+| `src/Server/McpResourceReader.php` | Resources | FR-RES-001, FR-RES-002 |
+| `src/Paging/McpTextSlice.php` | Paging | FR-PAGE-001 |
+| `src/Paging/McpCursor.php` | Paging | FR-PAGE-001 |
+| `src/Paging/McpLimits.php` | Paging | FR-PAGE-001 |

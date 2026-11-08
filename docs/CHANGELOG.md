@@ -29,3 +29,9 @@ All notable changes to this project are documented here. The format follows
 - Untrusted envelope (`McpUntrusted`, `McpEnvelope`): fixed notice, `untrusted` objects, escaped text block (C1, bidi,
   zero-width and tag characters).
 - `McpToolCallEvent` after every call (ids and field names only); `McpIdempotencyKey` for create tools.
+- Resource templates: `McpResourceTemplateInterface` (tag `nowo_mcp_kit.resource_template`),
+  `McpResourceTemplateDefinition` (RFC 6570 level 1, one regex per variable, build-time checks),
+  `resources/templates/list` per principal, `resources/read` (same not-found for every reason, envelope with `notice`,
+  `ttlMs: 0`, audit event); `resources/list` always empty. The authorizer now receives tools and templates.
+- Paging helpers: `McpTextSlice` (characters, `truncated` / `next_offset` / `total`), `McpCursor` (opaque base64url,
+  strict decoding), `McpLimits` service.

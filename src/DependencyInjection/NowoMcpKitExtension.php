@@ -8,6 +8,8 @@ use Nowo\McpKitBundle\Context\McpCallContextProvider;
 use Nowo\McpKitBundle\DependencyInjection\Compiler\McpRegistryPass;
 use Nowo\McpKitBundle\Http\McpEndpointController;
 use Nowo\McpKitBundle\Http\McpEndpointOptions;
+use Nowo\McpKitBundle\Paging\McpLimits;
+use Nowo\McpKitBundle\Registry\McpResourceTemplateRegistry;
 use Nowo\McpKitBundle\Registry\McpToolRegistry;
 use Nowo\McpKitBundle\Routing\McpRouteLoader;
 use Nowo\McpKitBundle\Security\AlwaysAvailable;
@@ -15,8 +17,10 @@ use Nowo\McpKitBundle\Security\DenyingMcpRateLimiter;
 use Nowo\McpKitBundle\Security\DenyingMcpToolAuthorizer;
 use Nowo\McpKitBundle\Security\McpFirewallGuard;
 use Nowo\McpKitBundle\Server\McpDispatcher;
+use Nowo\McpKitBundle\Server\McpResourceReader;
 use Nowo\McpKitBundle\Server\McpServerInfo;
 use Nowo\McpKitBundle\Server\McpToolInvoker;
+use Nowo\McpKitBundle\Tool\McpResourceTemplateInterface;
 use Nowo\McpKitBundle\Tool\McpToolInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -114,10 +118,24 @@ final class NowoMcpKitExtension extends Extension
             new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
         ]);
 
+        $container->registerForAutoconfiguration(McpResourceTemplateInterface::class)->addTag(McpRegistryPass::TEMPLATE_TAG);
+        $container->register(McpResourceTemplateRegistry::class, McpResourceTemplateRegistry::class)->setArguments([[], new ServiceLocatorArgument([])]);
+        $container->register(McpResourceReader::class, McpResourceReader::class)->setArguments([
+            new Reference(McpResourceTemplateRegistry::class),
+            new Reference($config['hooks']['authorizer'] ?? DenyingMcpToolAuthorizer::class),
+            new Reference('event_dispatcher'),
+            $config['limits']['max_result_bytes'],
+            new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+        ]);
+        $container->register(McpLimits::class, McpLimits::class)
+            ->setArguments([$config['limits']['max_text_chars'], $config['limits']['max_list_rows']])
+            ->setPublic(true);
+
         $container->register(McpDispatcher::class, McpDispatcher::class)->setArguments([
             new Reference(self::SERVER_INFO_ID),
             new Reference(self::OPTIONS_ID),
             new Reference(McpToolInvoker::class),
+            new Reference(McpResourceReader::class),
             $config['cache']['discover_ttl_ms'],
             $config['cache']['tools_list_ttl_ms'],
             $config['cache']['templates_list_ttl_ms'],

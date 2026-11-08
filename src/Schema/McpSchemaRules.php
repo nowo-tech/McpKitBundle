@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\McpKitBundle\Schema;
 
 use LogicException;
+use Nowo\McpKitBundle\Tool\McpResourceTemplateDefinition;
 use Nowo\McpKitBundle\Tool\McpToolDefinition;
 
 use function array_diff;
@@ -12,6 +13,7 @@ use function array_filter;
 use function array_intersect;
 use function array_is_list;
 use function array_keys;
+use function array_unique;
 use function count;
 use function implode;
 use function in_array;
@@ -22,9 +24,11 @@ use function is_int;
 use function is_string;
 use function mb_strlen;
 use function preg_match;
+use function preg_match_all;
 use function sprintf;
 use function str_replace;
 use function str_starts_with;
+use function strlen;
 
 /**
  * Compile-time rules for tool definitions. A violation stops the container build, so a tool cannot ship with a schema
@@ -71,6 +75,40 @@ final class McpSchemaRules
             throw new LogicException('inputSchema: the root must be "type": "object" with "additionalProperties": false.');
         }
         self::walk($input, 'inputSchema#', true, false, 0);
+        self::walk($definition->outputSchema, 'outputSchema#', false, false, 0);
+    }
+
+    /**
+     * Checks a resource template definition.
+     *
+     * @param McpResourceTemplateDefinition $definition the definition
+     *
+     * @throws LogicException on the first violation
+     */
+    public static function checkTemplate(McpResourceTemplateDefinition $definition): void
+    {
+        self::checkName($definition->name);
+        self::checkLabel($definition->title, 128, false, 'title');
+        self::checkLabel($definition->description, 2000, true, 'description');
+
+        $template = $definition->uriTemplate;
+        if (strlen($template) > 512 || preg_match('/^[a-z][a-z0-9+.-]*:\/\/[^\s{}]*(?:\{[a-z_][a-z0-9_]*\}[^\s{}]*)*$/', $template) !== 1) {
+            throw new LogicException('uriTemplate must be "scheme://…" with {variable} placeholders (RFC 6570 level 1).');
+        }
+        preg_match_all('/\{([a-z_][a-z0-9_]*)\}/', $template, $matches);
+        $placeholders = $matches[1];
+        $variables    = array_keys($definition->variables);
+        if (count(array_unique($placeholders)) !== count($placeholders) || array_diff($placeholders, $variables) !== [] || array_diff($variables, $placeholders) !== []) {
+            throw new LogicException('Each placeholder must appear once and have exactly one entry in variables.');
+        }
+        foreach ($definition->variables as $name => $pattern) {
+            if ($pattern === '' || strlen($pattern) > 256 || @preg_match('#^' . $pattern . '$#Du', '') === false) {
+                throw new LogicException(sprintf('variables.%s must be a valid regular expression of at most 256 characters.', $name));
+            }
+        }
+        if (@preg_match($definition->pattern(), '') === false) {
+            throw new LogicException('The URI template does not compile to a valid pattern.');
+        }
         self::walk($definition->outputSchema, 'outputSchema#', false, false, 0);
     }
 

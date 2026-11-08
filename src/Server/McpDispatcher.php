@@ -30,6 +30,7 @@ final readonly class McpDispatcher
      * @param McpServerInfo $serverInfo server identity
      * @param McpEndpointOptions $options endpoint options (served versions)
      * @param McpToolInvoker $tools tools/list and tools/call
+     * @param McpResourceReader $resources resources/templates/list and resources/read
      * @param int $discoverTtlMs `ttlMs` of `server/discover`
      * @param int $toolsListTtlMs `ttlMs` of `tools/list`
      * @param int $templatesListTtlMs `ttlMs` of `resources/templates/list`
@@ -39,6 +40,7 @@ final readonly class McpDispatcher
         private McpServerInfo $serverInfo,
         private McpEndpointOptions $options,
         private McpToolInvoker $tools,
+        private McpResourceReader $resources,
         private int $discoverTtlMs = 300000,
         private int $toolsListTtlMs = 300000,
         private int $templatesListTtlMs = 300000,
@@ -68,8 +70,8 @@ final readonly class McpDispatcher
             'tools/list'               => $this->listTools($rpc, $principal),
             'tools/call'               => $this->complete($rpc, $this->tools->call($rpc, $principal, $request)),
             'resources/list'           => $this->listResources($rpc),
-            'resources/templates/list' => $this->listTemplates($rpc),
-            'resources/read'           => $this->readResource($rpc),
+            'resources/templates/list' => $this->listTemplates($rpc, $principal),
+            'resources/read'           => $this->complete($rpc, $this->resources->read($rpc, $principal, $request), 0),
             default                    => throw JsonRpcError::methodNotFound(),
         };
     }
@@ -151,37 +153,20 @@ final readonly class McpDispatcher
     }
 
     /**
-     * `resources/templates/list`.
+     * `resources/templates/list`: the templates the principal may use.
      *
      * @param McpRequest $rpc the request
+     * @param McpPrincipal $principal the principal
      *
      * @return stdClass the result
      */
-    private function listTemplates(McpRequest $rpc): stdClass
+    private function listTemplates(McpRequest $rpc, McpPrincipal $principal): stdClass
     {
         $this->refuseCursor($rpc);
         $result                    = new stdClass();
-        $result->resourceTemplates = [];
+        $result->resourceTemplates = $this->resources->listTemplates($principal);
 
         return $this->complete($rpc, $result, $this->templatesListTtlMs);
-    }
-
-    /**
-     * `resources/read`.
-     *
-     * @param McpRequest $rpc the request
-     *
-     * @throws JsonRpcError always: no template is registered yet
-     *
-     * @return stdClass the result
-     */
-    private function readResource(McpRequest $rpc): stdClass
-    {
-        if (!is_string($rpc->params->uri ?? null)) {
-            throw JsonRpcError::invalidParams('Missing uri');
-        }
-
-        throw JsonRpcError::invalidParamsOk('Resource not found');
     }
 
     /**
