@@ -126,6 +126,7 @@ final class McpSchemaRules
         if (@preg_match($definition->pattern(), '') === false) {
             throw new LogicException('The URI template does not compile to a valid pattern.');
         }
+        self::checkOutputRoot($definition->outputSchema);
         self::walk($definition->outputSchema, 'outputSchema#', false, false, 0);
     }
 
