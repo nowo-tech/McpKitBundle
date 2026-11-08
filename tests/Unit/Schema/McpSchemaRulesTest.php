@@ -85,6 +85,13 @@ final class McpSchemaRulesTest extends TestCase
         yield 'data uri pattern' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'pattern' => '^data:', 'maxLength' => 100]])), 'format": "uri" needs'];
         yield 'long uri' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://', 'maxLength' => 4096]])), 'format": "uri" needs'];
         yield 'free format' => [self::tool(output: $object(['e' => ['type' => 'string', 'format' => 'email', 'pattern' => '^[a-z]+$', 'maxLength' => 10]])), 'free text'];
+        yield 'top-level alternation' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^open|closed$', 'maxLength' => 10]])), 'free text'];
+        yield 'top-level alternation of groups' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^(?:open)|(?:closed)$', 'maxLength' => 10]])), 'free text'];
+        yield 'unbalanced group' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^(a$', 'maxLength' => 10]])), 'pattern'];
+        yield 'closing group first' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^a)(b$', 'maxLength' => 10]])), 'pattern'];
+        yield 'mixed-class range' => [self::tool(output: $object(['s' => ['type' => 'string', 'pattern' => '^[0-z]+$', 'maxLength' => 10]])), 'free text'];
+        yield 'uri with wildcard' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://.*$', 'maxLength' => 100]])), 'format": "uri" needs'];
+        yield 'uri with top-level alternation' => [self::tool(output: $object(['u' => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://x|.*$', 'maxLength' => 100]])), 'format": "uri" needs'];
         yield 'output root not object' => [self::tool(output: ['type' => 'array', 'items' => ['type' => 'integer']]), 'root must be "type": "object"'];
         yield 'free text in output' => [self::tool(output: $object(['title' => ['type' => 'string']])), 'free text must sit under "untrusted"'];
         yield 'untrusted not object' => [self::tool(output: $object(['untrusted' => ['type' => 'string']])), 'must be "type": "object"'];
@@ -121,7 +128,9 @@ final class McpSchemaRulesTest extends TestCase
             'id'     => ['type' => 'string', 'format' => 'uuid'],
             'at'     => ['type' => ['string', 'null'], 'format' => 'date-time'],
             'number' => ['type' => 'string', 'pattern' => '^#[0-9]+$', 'maxLength' => 20],
-            'link'   => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://app\\.example/', 'maxLength' => 2048],
+            'link'   => ['type' => 'string', 'format' => 'uri', 'pattern' => '^https://app\\.example/[a-z0-9/-]{0,200}$', 'maxLength' => 2048],
+            'state'  => ['type' => 'string', 'pattern' => '^(?:open|closed)$', 'maxLength' => 6],
+            'slug'   => ['type' => 'string', 'pattern' => '^[a-z0-9_-]{1,64}$', 'maxLength' => 64],
             'status' => ['type' => 'string', 'enum' => ['open', 'done']],
             'ref'    => ['$ref' => '#/$defs/row'],
             'rows'   => ['type' => 'array', 'items' => ['type' => 'object', 'additionalProperties' => false, 'properties' => ['untrusted' => ['type' => 'object', 'properties' => ['t' => ['type' => 'string']]]]]],

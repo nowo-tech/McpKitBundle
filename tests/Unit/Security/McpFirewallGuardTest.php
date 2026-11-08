@@ -65,4 +65,23 @@ final class McpFirewallGuardTest extends TestCase
         $session->start();
         self::assertFalse($guard->isTrusted($request, new McpPrincipal($user, 'i', 'n')));
     }
+
+    #[Test]
+    public function forgetDropsTheTokenAndEmptiesAStartedSession(): void
+    {
+        $storage = new TokenStorage();
+        $storage->setToken(new UsernamePasswordToken(new InMemoryUser('ada', ''), 'main'));
+        $request = Request::create('/mcp');
+        $session = new Session(new MockArraySessionStorage());
+        $request->setSession($session);
+
+        (new McpFirewallGuard(true, $storage))->forget($request);
+        self::assertNull($storage->getToken());
+
+        $session->set('_security_main', 'x');
+        (new McpFirewallGuard(true, $storage))->forget($request);
+        self::assertSame([], $session->all());
+
+        (new McpFirewallGuard(true))->forget(Request::create('/mcp'));
+    }
 }

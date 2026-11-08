@@ -49,8 +49,9 @@ abstract class KernelTestCase extends TestCase
      * @param array<string, mixed> $config nowo_mcp_kit configuration (merged over the test defaults)
      * @param array<string, string> $services extra service id => class (autoconfigured, public)
      * @param array<string, mixed>|null $security security configuration (null: the default stateless firewall)
+     * @param array<string, mixed> $framework extra FrameworkBundle configuration
      */
-    protected function bootKernel(array $config = [], array $services = [], ?array $security = null, ?Closure $routes = null, bool $withSecurity = true, bool $debug = false): McpKitTestKernel
+    protected function bootKernel(array $config = [], array $services = [], ?array $security = null, ?Closure $routes = null, bool $withSecurity = true, bool $debug = false, array $framework = []): McpKitTestKernel
     {
         $id     = (string) preg_replace('/\W+/', '_', static::class . '_' . $this->name() . '_' . count($this->kernels));
         $config = array_replace_recursive([
@@ -86,6 +87,7 @@ abstract class KernelTestCase extends TestCase
             },
             $withSecurity,
             $debug,
+            $framework,
         );
         $kernel->boot();
         $this->kernels[] = $kernel;

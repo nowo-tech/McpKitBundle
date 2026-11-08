@@ -68,10 +68,11 @@ final class McpSchemaRules
 
     /**
      * One token of a safe trusted pattern body: a literal (letters, digits, `_ : # @ / -`), an escaped literal, `\d`, a
-     * positive character class of those characters and ranges (a `.` is literal inside a class), a quantifier, a group
-     * or an alternation. No `.` wildcard, no whitespace, no `\s \S \w \W \p`, no negated class.
+     * positive character class of those characters and same-class ranges (`a-z`, `A-Z`, `0-9`; a `.` is literal inside a
+     * class), a quantifier, a group or an alternation inside a group. No `.` wildcard, no whitespace, no `\s \S \w \W
+     * \p`, no negated class, no top-level alternation (it would break the anchors).
      */
-    private const SAFE_PATTERN_TOKEN = '~\G(?:[A-Za-z0-9_:#@/-]|\\\\[.\-/#:+?*()\[\]{}^$|]|\\\\d|\[(?:[A-Za-z0-9]-[A-Za-z0-9]|[A-Za-z0-9_:#@/.-]|\\\\[.\-/])+\]|\{[0-9]{1,3}(?:,[0-9]{0,3})?\}|[?+*]|\((?:\?:)?|\)|\|)~';
+    private const SAFE_PATTERN_TOKEN = '~\G(?:[A-Za-z0-9_:#@/-]|\\\\[.\-/#:+?*()\[\]{}^$|]|\\\\d|\[(?:[a-z]-[a-z]|[A-Z]-[A-Z]|[0-9]-[0-9]|[A-Za-z0-9_:#@/.]|-(?=\])|\\\\[.\-/])+\]|\{[0-9]{1,3}(?:,[0-9]{0,3})?\}|[?+*]|\((?:\?:)?|\)|\|)~';
 
     /**
      * Checks a tool definition.
@@ -283,8 +284,9 @@ final class McpSchemaRules
 
     /**
      * A string outside `untrusted` must not be able to carry free text (audit IH-L3): `format` uuid, date or date-time; or
-     * `format: uri` limited to http(s) with `maxLength` <= 2,048 and an anchored `^https?://` pattern; or an anchored
-     * pattern of safe tokens (no wildcard, no whitespace) with `maxLength` <= 512.
+     * `format: uri` limited to http(s) with `maxLength` <= 2,048 and a pattern `^https://…$` or `^https?://…$` whose rest
+     * is made of safe tokens too; or an anchored pattern of safe tokens (no wildcard, no whitespace, no top-level
+     * alternation) with `maxLength` <= 512.
      *
      * @param array<string, mixed> $schema the schema
      * @param string $path the path
@@ -300,8 +302,8 @@ final class McpSchemaRules
             return;
         }
         if ($format === 'uri') {
-            if (!is_int($max) || $max > self::MAX_URI_LENGTH || !is_string($pattern) || preg_match('~^\\^https\\??://~', $pattern) !== 1) {
-                throw new LogicException($path . ': a trusted "format": "uri" needs "maxLength" <= ' . self::MAX_URI_LENGTH . ' and a "pattern" anchored with "^https://" or "^https?://" (URLs written by people go under "untrusted").');
+            if (!is_int($max) || $max > self::MAX_URI_LENGTH || !is_string($pattern) || preg_match('~^\\^https\\??://(.+)$~s', $pattern, $rest) !== 1 || !self::isSafePattern('^' . $rest[1])) {
+                throw new LogicException($path . ': a trusted "format": "uri" needs "maxLength" <= ' . self::MAX_URI_LENGTH . ' and a "pattern" "^https://…$" or "^https?://…$" whose rest is a safe pattern (URLs written by people go under "untrusted").');
             }
 
             return;
@@ -325,15 +327,25 @@ final class McpSchemaRules
         }
         $body   = substr($pattern, 1, -1);
         $offset = 0;
+        $depth  = 0;
         $length = strlen($body);
         while ($offset < $length) {
             if (preg_match(self::SAFE_PATTERN_TOKEN, $body, $match, 0, $offset) !== 1) {
                 return false;
             }
+            $depth += match ($match[0]) {
+                '(', '(?:' => 1,
+                ')'        => -1,
+                default    => 0,
+            };
+            // `^a|b$` means `(^a)|(b$)`: an alternation outside a group defeats the anchors (audit IH-L3r).
+            if ($depth < 0 || ($match[0] === '|' && $depth === 0)) {
+                return false;
+            }
             $offset += strlen($match[0]);
         }
 
-        return true;
+        return $depth === 0;
     }
 
     /**

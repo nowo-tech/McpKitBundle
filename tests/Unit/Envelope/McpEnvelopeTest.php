@@ -90,6 +90,12 @@ final class McpEnvelopeTest extends TestCase
     }
 
     #[Test]
+    public function mongolianSelectorsAndUnassignedCodePointsAreEscaped(): void
+    {
+        self::assertSame('{"v":"a\\u180bb\\u180fc\\u2065d"}', McpEnvelope::text(['v' => "a\u{180B}b\u{180F}c\u{2065}d"]));
+    }
+
+    #[Test]
     public function invalidUtf8CanBeSubstituted(): void
     {
         self::assertSame("{\"v\":\"\u{FFFD}(\"}", McpEnvelope::text(['v' => "\xC3\x28"], true));
