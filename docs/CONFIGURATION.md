@@ -28,7 +28,8 @@ nowo_mcp_kit:
         max_result_bytes: 2097152 # serialized tool result cap (OUTPUT_001)
         slow_call_ms: 2000      # slower calls are logged at warning level
     maintenance_retry_after: 60 # Retry-After of the maintenance 503
-    firewall_check: true        # 500 when the firewall user is not the principal's user
+    firewall_check: true        # 500 unless the firewall user is the principal's user behind a secured, stateless firewall
+                                # false: tests only, refused unless kernel.debug is true
     hooks:
         authenticator: ~        # McpAuthenticatorInterface service id: required when enabled
         authorizer: ~           # McpToolAuthorizerInterface: default allows no tool
@@ -79,7 +80,9 @@ security:
 ```
 
 With `firewall_check: true` (default), a principal whose user is not the firewall user, or a request that did not go
-through a secured firewall, answers 500 and logs one error.
+through a secured **stateless** firewall, answers 500 and logs one error. A stateful firewall would store the
+bearer-authenticated token in a session and turn an agent token into a full web session. `firewall_check: false` is for
+tests only: the container refuses it unless `kernel.debug` is true.
 
 ## Versions
 

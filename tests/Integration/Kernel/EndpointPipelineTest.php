@@ -14,6 +14,7 @@ use Nowo\McpKitBundle\Server\McpRequest;
 use Nowo\McpKitBundle\Server\McpServerInfo;
 use Nowo\McpKitBundle\Tests\Fixtures\FixtureAvailability;
 use Nowo\McpKitBundle\Tests\Fixtures\FixtureRateLimiter;
+use Nowo\McpKitBundle\Tests\Fixtures\TestFirewallAuthenticator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -205,9 +206,20 @@ final class EndpointPipelineTest extends KernelTestCase
     }
 
     #[Test]
-    public function theFirewallCheckCanBeTurnedOff(): void
+    public function aStatefulFirewallAnswers500(): void
     {
-        $kernel = $this->bootKernel(['firewall_check' => false], [], null, null, false);
+        $kernel = $this->bootKernel([], [], [
+            'providers' => ['memory' => ['memory' => ['users' => ['ada' => ['password' => '', 'roles' => ['ROLE_USER']]]]]],
+            'firewalls' => ['mcp' => ['pattern' => '^/mcp$', 'stateless' => false, 'provider' => 'memory', 'custom_authenticators' => [TestFirewallAuthenticator::class]]],
+        ]);
+
+        $this->assertRpcError($this->send($kernel, 'POST', self::DISCOVER, self::HEADERS), 500, -32603, false);
+    }
+
+    #[Test]
+    public function theFirewallCheckCanBeTurnedOffInDebugOnly(): void
+    {
+        $kernel = $this->bootKernel(['firewall_check' => false], [], null, null, false, true);
 
         self::assertSame(200, $this->send($kernel, 'POST', self::DISCOVER, self::HEADERS)->getStatusCode());
     }

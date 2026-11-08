@@ -114,7 +114,7 @@ final class Configuration implements ConfigurationInterface
                     ->min(1)
                 ->end()
                 ->booleanNode('firewall_check')
-                    ->info('Refuse (500) when the firewall user is not the principal user or the firewall is not secured.')
+                    ->info('Refuse (500) when the firewall user is not the principal user or the firewall is not secured and stateless. False is for tests only and is refused unless kernel.debug is true.')
                     ->defaultTrue()
                 ->end()
                 ->arrayNode('hooks')
