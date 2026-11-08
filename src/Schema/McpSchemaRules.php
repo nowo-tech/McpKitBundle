@@ -26,6 +26,7 @@ use function mb_strlen;
 use function preg_match;
 use function preg_match_all;
 use function sprintf;
+use function str_contains;
 use function str_ends_with;
 use function str_replace;
 use function str_starts_with;
@@ -120,8 +121,8 @@ final class McpSchemaRules
             throw new LogicException('Each placeholder must appear once and have exactly one entry in variables.');
         }
         foreach ($definition->variables as $name => $pattern) {
-            if ($pattern === '' || strlen($pattern) > 256 || @preg_match('#^' . $pattern . '$#Du', '') === false) {
-                throw new LogicException(sprintf('variables.%s must be a valid regular expression of at most 256 characters.', $name));
+            if ($pattern === '' || strlen($pattern) > 256 || str_contains($pattern, '(*') || @preg_match('#^' . $pattern . '$#Du', '') === false) {
+                throw new LogicException(sprintf('variables.%s must be a valid regular expression of at most 256 characters, without PCRE verbs.', $name));
             }
         }
         if (@preg_match($definition->pattern(), '') === false) {

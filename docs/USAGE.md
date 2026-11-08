@@ -234,6 +234,9 @@ public function read(McpResourceRead $read): McpToolResult
 - `resources/read` matches the URI against the allowed templates in order. Anything unmatched, hidden, or refused by
   the template (`McpToolError`) answers the same `-32602` "Resource not found". Contents are one
   `application/json` text; when it holds untrusted values its first key is `notice`. `ttlMs: 0`.
+- Template variables are untrusted input: the kit only guarantees they match their regular expression (which may not
+  contain PCRE verbs such as `(*ACCEPT)`). Prefer narrow expressions (`[0-9a-f-]{36}`), never `.*` or `[^/]+`, and check
+  access in `read()` as in any tool.
 - A read dispatches `McpToolCallEvent` with kind `ReadOnly` and the template name.
 - Tool results can link to resources with `McpResourceLink`.
 
@@ -243,7 +246,11 @@ public function read(McpResourceRead $read): McpToolResult
 | --- | --- |
 | `Paging\McpTextSlice::of($text, $offset, $limits->maxTextChars)` | One page of a long text in characters: `text` (put it under `untrusted`) and `paging()` = `truncated`, `next_offset`, `total` (outside) |
 | `Paging\McpCursor::encode(['o' => 50])` / `decode($cursor)` / `schema()` | Opaque base64url cursors of flat scalar maps; a malformed cursor is `INPUT_002` "Invalid field: cursor". A cursor is a position, not a credential |
+| `Paging\McpCursorSigner` (service) | Optional signed cursors: `encode($state, $principal, $tool)` / `decode($cursor, $principal, $tool)` / `schema()`, HMAC with a key derived from `kernel.secret`, bound to the token and the tool; a forged or foreign cursor is `INPUT_002` |
 | `Paging\McpLimits` (service) | `maxTextChars` (`limits.max_text_chars`, 100,000) and `maxListRows` (`limits.max_list_rows`, 50) |
+
+Put only offsets or opaque ids in a cursor, and **never decide access from a cursor**: check the token's reach on every
+call, whatever the cursor says (signed or not).
 
 A whole tool result above `limits.max_result_bytes` is refused (`OUTPUT_001`); resource contents above it answer
 `-32602` "Resource too large".

@@ -181,6 +181,7 @@ final class McpSchemaRulesTest extends TestCase
         yield 'broken regex' => [self::template('demo://x/{id}', ['id' => '[0-9']), 'valid regular expression'];
         yield 'delimiter in regex' => [self::template('demo://x/{id}', ['id' => 'a#b']), 'valid regular expression'];
         yield 'template output root' => [self::template(output: ['type' => 'array', 'items' => ['type' => 'integer']]), 'root must be'];
+        yield 'pcre verb' => [self::template('demo://x/{id}', ['id' => '[0-9]+(*ACCEPT)']), 'without PCRE verbs'];
         yield 'group name clash' => [self::template('demo://x/{id}', ['id' => '(?P<id>[0-9]+)']), 'does not compile'];
         yield 'free text output' => [self::template(output: ['type' => 'object', 'additionalProperties' => false, 'properties' => ['t' => ['type' => 'string']]]), 'free text'];
     }

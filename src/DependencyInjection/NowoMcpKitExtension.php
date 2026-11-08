@@ -8,6 +8,7 @@ use Nowo\McpKitBundle\Context\McpCallContextProvider;
 use Nowo\McpKitBundle\DependencyInjection\Compiler\McpRegistryPass;
 use Nowo\McpKitBundle\Http\McpEndpointController;
 use Nowo\McpKitBundle\Http\McpEndpointOptions;
+use Nowo\McpKitBundle\Paging\McpCursorSigner;
 use Nowo\McpKitBundle\Paging\McpLimits;
 use Nowo\McpKitBundle\Registry\McpResourceTemplateRegistry;
 use Nowo\McpKitBundle\Registry\McpToolRegistry;
@@ -131,6 +132,9 @@ final class NowoMcpKitExtension extends Extension
             $config['limits']['max_result_bytes'],
             new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
         ]);
+        $container->register(McpCursorSigner::class, McpCursorSigner::class)
+            ->setArguments(['%kernel.secret%'])
+            ->setPublic(true);
         $container->register(McpLimits::class, McpLimits::class)
             ->setArguments([$config['limits']['max_text_chars'], $config['limits']['max_list_rows']])
             ->setPublic(true);

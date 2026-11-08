@@ -47,5 +47,7 @@ All notable changes to this project are documented here. The format follows
   `McpResourceTemplateDefinition` (RFC 6570 level 1, one regex per variable, build-time checks),
   `resources/templates/list` per principal, `resources/read` (same not-found for every reason, envelope with `notice`,
   `ttlMs: 0`, audit event); `resources/list` always empty. The authorizer now receives tools and templates.
+- Audit IH (S3): optional `McpCursorSigner` (HMAC from `kernel.secret`, bound to token and tool; IH-I12); template
+  variable regexes may not contain PCRE verbs (IH-I13).
 - Paging helpers: `McpTextSlice` (characters, `truncated` / `next_offset` / `total`), `McpCursor` (opaque base64url,
   strict decoding), `McpLimits` service.
