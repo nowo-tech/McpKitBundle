@@ -27,7 +27,7 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - The credential is read from `Authorization` only (never the query string), never logged or echoed.
 - Failed tokens are counted per IP and limited before the authenticator runs.
 - The firewall user must be the principal's user behind a secured, stateless firewall (`firewall_check`, which can only
-  be turned off with `kernel.debug`).
+  be turned off with `kernel.debug`). On a refusal the token is dropped, so a stateful firewall stores no session.
 - Bearer only, no cookies: CSRF does not apply (REQ-SEC-005).
 
 ## Logging

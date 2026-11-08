@@ -231,6 +231,7 @@ final readonly class McpEndpointController
             throw $this->unauthenticated();
         }
         if (!$this->firewallGuard->isTrusted($request, $principal)) {
+            $this->firewallGuard->forget($request);
             $this->logger->error('MCP: the security user is not the token\'s user. The endpoint must sit behind a stateless, secured firewall that authenticates the token.', ['bundle' => 'nowo_mcp_kit']);
 
             throw JsonRpcError::internal();

@@ -61,6 +61,20 @@ final readonly class McpFirewallGuard
     }
 
     /**
+     * Drops the authenticated token after a refusal, so a stateful firewall's context listener stores nothing and no
+     * session cookie leaves with the 500 (audit IH-L1r); a session already started on this request is emptied.
+     *
+     * @param Request $request the refused request
+     */
+    public function forget(Request $request): void
+    {
+        $this->tokenStorage?->setToken(null);
+        if ($request->hasSession() && $request->getSession()->isStarted()) {
+            $request->getSession()->clear();
+        }
+    }
+
+    /**
      * Compares the security user with the principal's user.
      *
      * @param UserInterface $securityUser the firewall's user
