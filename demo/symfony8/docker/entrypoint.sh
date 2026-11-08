@@ -23,6 +23,10 @@ case "$MODE" in
 		exit 1
 		;;
 esac
+if [ "${MCP_CONFORMANCE:-0}" = "1" ]; then
+	cp /app/docker/frankenphp/Caddyfile.conformance /etc/frankenphp/Caddyfile
+	MODE="$MODE (conformance profile)"
+fi
 echo "FrankenPHP mode: $MODE"
 
 mkdir -p /app/var/cache /app/var/log

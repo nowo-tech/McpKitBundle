@@ -20,3 +20,22 @@
 
 Per-request data (principal, rate-limit state, call context) lives on the `Request` attributes; services are readonly.
 The bundle makes no outbound request.
+
+## Flow
+
+```
+Client ──POST /mcp──▶ host firewall (stateless; Bearer → security user; a bad token passes with no user)
+                        │
+                        ▼
+              McpEndpointController ── hooks ──▶ authenticator · rate limiter · availability
+              (order of checks, era, headers)
+                        │
+                        ▼
+                  McpDispatcher ──▶ McpToolInvoker ── authorizer ──▶ host tools (McpToolInterface)
+                        │        └─▶ McpResourceReader ───────────▶ host templates (McpResourceTemplateInterface)
+                        ▼
+          McpEnvelope (untrusted groups, escaped text) ─▶ JSON answer;  McpToolCallEvent ─▶ host audit
+```
+
+Build time: `McpRegistryPass` reads every tool's and template's static definition, checks it with `McpSchemaRules`
+and compiles the registries.

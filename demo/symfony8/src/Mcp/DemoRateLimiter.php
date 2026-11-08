@@ -22,7 +22,8 @@ final readonly class DemoRateLimiter implements McpRateLimiterInterface
 
     public function consume(McpPrincipal $principal): McpRateLimitState
     {
-        return $this->hit('req.' . $principal->tokenId, 100);
+        // The conformance runner (profile only) sends many requests in a burst.
+        return $this->hit('req.' . $principal->tokenId, isset($principal->grants['conformance']) ? 1000 : 100);
     }
 
     public function consumeWrite(McpPrincipal $principal, string $tool): McpRateLimitState

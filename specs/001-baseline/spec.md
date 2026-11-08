@@ -82,6 +82,11 @@ validation, the untrusted envelope, size caps and an audit event. The host regis
 - **FR-RES-001** Resource templates are services with a static definition (RFC 6570 level 1, one regex per variable),
   checked at build time; `resources/templates/list` lists those the authorizer allows; `resources/list` is empty.
 - **FR-RES-002** `resources/read` matches allowed templates in order; unmatched, hidden or refused URIs answer the same
-  `-32602`; contents carry the envelope (`notice` first) and `ttlMs: 0`.
+  `-32602` (with `data.uri` when short visible ASCII); contents carry the envelope (`notice` first) and `ttlMs: 0`.
 - **FR-PAGE-001** `McpTextSlice` pages text by characters; `McpCursor` encodes and strictly decodes opaque cursors;
   `McpLimits` exposes the configured page sizes.
+
+### Conformance
+
+- **FR-CONF-001** The official MCP conformance runner, pinned exactly, passes the `2026-07-28` and `2025-11-25`
+  requirement sets against the demo, except the per-check entries of `tests/Conformance/expected-failures-*.yml`.

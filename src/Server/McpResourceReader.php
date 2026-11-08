@@ -119,7 +119,7 @@ final readonly class McpResourceReader
             }
         }
 
-        throw $this->notFound();
+        throw $this->notFound($uri);
     }
 
     /**
@@ -147,7 +147,7 @@ final readonly class McpResourceReader
         } catch (McpToolError $error) {
             $this->audit(McpCallOutcome::ToolError, $error->ecode, null, $principal, $definition, $context, $started);
 
-            throw $this->notFound();
+            throw $this->notFound($uri);
         } catch (Throwable $throwable) {
             $this->fail($throwable, $principal, $definition, $context, $started);
         }
@@ -199,13 +199,17 @@ final readonly class McpResourceReader
     }
 
     /**
-     * The one answer for anything not readable.
+     * The one answer for anything not readable, with the requested URI in `data` (SEP-2164) when it is short visible ASCII.
+     *
+     * @param string $uri the requested URI (the client's own input)
      *
      * @return JsonRpcError `-32602` "Resource not found"
      */
-    private function notFound(): JsonRpcError
+    private function notFound(string $uri): JsonRpcError
     {
-        return JsonRpcError::invalidParamsOk('Resource not found');
+        $data = strlen($uri) <= 2048 && preg_match('/^[\x21-\x7E]+$/D', $uri) === 1 ? ['uri' => $uri] : null;
+
+        return new JsonRpcError(McpProtocol::INVALID_PARAMS, 'Resource not found', 200, $data);
     }
 
     /**

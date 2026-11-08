@@ -4,6 +4,11 @@ nowo_mcp_kit:
         name: mcp-kit-demo
         title: MCP Kit demo
         version: '%env(default:app_version_default:APP_VERSION)%'
+    # The demo's own origins, so a browser on the demo page (and the conformance runner's DNS-rebinding check) is
+    # accepted; any other Origin answers 403. A real host usually keeps this list empty.
+    allowed_origins:
+        - 'http://localhost:8219'
+        - 'http://127.0.0.1:8219'
     hooks:
         authenticator: App\Mcp\DemoMcpAuthenticator
         authorizer: App\Mcp\DemoAuthorizer

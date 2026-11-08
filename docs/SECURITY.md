@@ -8,6 +8,7 @@
 - [Tools](#tools)
 - [Untrusted content](#untrusted-content)
 - [Logging](#logging)
+- [Conformance](#conformance)
 - [Host checklist](#host-checklist)
 - [Audit status](#audit-status)
 
@@ -55,6 +56,11 @@ read-only tokens for anything unattended, the destructive tick only when needed,
 
 Logs carry tool names, outcomes, durations and exception classes only; never bodies, arguments, results, credentials
 or `clientInfo`.
+
+## Conformance
+
+The official MCP conformance runner is a required CI gate (both revisions), including its DNS-rebinding scenario: a
+foreign `Host` / `Origin` is refused and the demo's own origin is accepted.
 
 ## Host checklist
 

@@ -1,0 +1,25 @@
+{
+	skip_install_trust
+	servers {
+		timeouts {
+			write 30s
+		}
+	}
+	frankenphp {
+		php_ini max_execution_time 20
+		php_ini max_input_time 20
+		max_wait_time 10s
+	}
+}
+
+# Conformance profile only (MCP_CONFORMANCE=1): the official runner sends no credential, so Caddy adds the
+# conformance token, which the demo accepts only in this profile. Worker mode, as in production.
+:80 {
+	root * /app/public
+	request_header Authorization "Bearer demo-conformance-token-change-me"
+	php_server {
+		worker {
+			file /app/public/index.php
+		}
+	}
+}

@@ -21,12 +21,24 @@ final class DemoTokens
     ];
 
     /**
+     * Injected by Caddy only in the conformance profile (MCP_CONFORMANCE=1), because the official runner sends no
+     * credential. Never valid otherwise.
+     */
+    public const CONFORMANCE_TOKEN = 'demo-conformance-token-change-me';
+
+    /**
      * The token entry of a bearer credential.
      *
      * @return array{user: string, name: string, destructive: bool, grants: array<string, string>}|null
      */
     public static function find(?string $credential): ?array
     {
+        if ($credential === self::CONFORMANCE_TOKEN) {
+            return ($_SERVER['MCP_CONFORMANCE'] ?? getenv('MCP_CONFORMANCE')) === '1'
+                ? ['user' => 'ada', 'name' => 'Conformance runner', 'destructive' => false, 'grants' => ['notes' => 'read', 'conformance' => 'yes']]
+                : null;
+        }
+
         return $credential === null ? null : (self::TOKENS[$credential] ?? null);
     }
 }

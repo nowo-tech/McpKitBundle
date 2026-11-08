@@ -275,6 +275,36 @@ the tool (`toolName`), so listeners of your own write events can add it to their
 
 ## Connecting a client
 
+Any client that can send a header works; no OAuth is offered.
+
 ```bash
+# Claude Code
 claude mcp add --transport http my-app https://app.example/mcp --header "Authorization: Bearer ${MY_APP_TOKEN}"
 ```
+
+```json
+// Cursor / VS Code style configuration
+{ "mcpServers": { "my-app": { "url": "https://app.example/mcp", "headers": { "Authorization": "Bearer ${env:MY_APP_TOKEN}" } } } }
+```
+
+A raw modern call:
+
+```bash
+curl -s https://app.example/mcp \
+  -H "Authorization: Bearer $MY_APP_TOKEN" -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/list' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'
+```
+
+Clients that only speak OAuth cannot connect. A client on a legacy revision opens with `initialize` and is served
+statelessly; it never gets a session id.
+
+## Conformance
+
+`make test-conformance` (also a required CI job) boots the demo in its conformance profile and runs the official
+runner, `@modelcontextprotocol/conformance` pinned to an exact version, with the requirement sets of `2026-07-28` and
+`2025-11-25`. The per-check baselines in `tests/Conformance/expected-failures-*.yml` list only features v1 does not
+offer by design (prompts, completions, logging, sampling, elicitation, multi round-trip requests, subscriptions,
+progress, binary or image content, required client capabilities); the runner fails on any regression and on any stale
+entry. Extension and pending scenarios run but do not count.

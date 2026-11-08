@@ -40,5 +40,11 @@ All notable changes to this project are documented here. The format follows
   `McpResourceTemplateDefinition` (RFC 6570 level 1, one regex per variable, build-time checks),
   `resources/templates/list` per principal, `resources/read` (same not-found for every reason, envelope with `notice`,
   `ttlMs: 0`, audit event); `resources/list` always empty. The authorizer now receives tools and templates.
+- Conformance: the official runner `@modelcontextprotocol/conformance` (pinned to 0.2.0-alpha.12) runs the
+  `2026-07-28` and `2025-11-25` requirement sets against the demo (`make test-conformance`, required CI job), with
+  per-check baselines in `tests/Conformance/`. `resources/read` not-found errors carry the requested URI in `data`
+  (SEP-2164) when it is short visible ASCII.
+- Demo conformance profile (`MCP_CONFORMANCE=1`), demo client setup page, and full documentation (usage, security,
+  worker audit, upgrading).
 - Paging helpers: `McpTextSlice` (characters, `truncated` / `next_offset` / `total`), `McpCursor` (opaque base64url,
   strict decoding), `McpLimits` service.

@@ -3,6 +3,28 @@
 {% block body %}
     <div class="card">
         <h2>Model Context Protocol endpoint</h2>
-        <p>This demo serves <code>POST /mcp</code> with <code>nowo-tech/mcp-kit-bundle</code>.</p>
+        <p>This demo serves <code>POST /mcp</code> with <code>nowo-tech/mcp-kit-bundle</code>: stateless Streamable HTTP,
+            JSON answers, revisions 2026-07-28 (modern) and 2025-11-25 / 2025-06-18 (legacy).</p>
+    </div>
+    <div class="card">
+        <h2>Demo tokens (throwaway)</h2>
+        <ul>
+            <li><code>demo-read-token-change-me</code>: ada, notes read: <code>note_list</code>, <code>note_get</code></li>
+            <li><code>demo-edit-token-change-me</code>: ada, notes edit: adds <code>note_create</code></li>
+            <li><code>demo-full-token-change-me</code>: grace, notes edit and the destructive tick: adds <code>note_archive</code></li>
+        </ul>
+    </div>
+    <div class="card">
+        <h2>Connect Claude Code</h2>
+        <pre>claude mcp add --transport http mcp-kit-demo http://localhost:8219/mcp --header "Authorization: Bearer demo-read-token-change-me"</pre>
+    </div>
+    <div class="card">
+        <h2>Call it with curl</h2>
+        <pre>curl -s http://localhost:8219/mcp \
+  -H 'Authorization: Bearer demo-read-token-change-me' -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2026-07-28' -H 'Mcp-Method: tools/call' -H 'Mcp-Name: note_get' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"note_get","arguments":{"id":"7c2e9a41-5b3d-4f6e-8a1c-2d4e6f8a0b12"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}}'</pre>
+        <p>That note holds injection text on purpose: it comes back under <code>untrusted</code>, behind the fixed notice,
+            with hidden characters escaped in the text block.</p>
     </div>
 {% endblock %}

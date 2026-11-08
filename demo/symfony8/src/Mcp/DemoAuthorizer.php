@@ -21,6 +21,7 @@ final readonly class DemoAuthorizer implements McpToolAuthorizerInterface
             $ok = match ($grant) {
                 'notes:read' => $level === 'read' || $level === 'edit',
                 'notes:edit' => $level === 'edit',
+                'conformance' => ($principal->grants['conformance'] ?? null) === 'yes',
                 default      => false,
             };
             if (!$ok) {

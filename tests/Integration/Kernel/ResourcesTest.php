@@ -24,6 +24,7 @@ use function array_column;
 use function base64_encode;
 use function json_decode;
 use function str_repeat;
+use function strlen;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -115,6 +116,7 @@ final class ResourcesTest extends KernelTestCase
             $response = $this->modern($kernel, 'resources/read', ['uri' => $uri], [], $token);
             $this->assertRpcError($response, 200, -32602);
             self::assertSame('Resource not found', $this->json($response)['error']['message']);
+            self::assertSame(strlen($uri) <= 2048 ? ['uri' => $uri] : null, $this->json($response)['error']['data'] ?? null);
         }
         self::assertSame(McpCallOutcome::ToolError, $this->service($kernel, AuditRecorder::class)->events[0]->outcome);
         self::assertSame('ACCESS_001', $this->service($kernel, AuditRecorder::class)->events[0]->ecode);
