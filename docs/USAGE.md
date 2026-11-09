@@ -12,6 +12,7 @@
 - [Untrusted content](#untrusted-content)
 - [Audit event](#audit-event)
 - [Call context](#call-context)
+- [Using it from a DDD / hexagonal application](#using-it-from-a-ddd--hexagonal-application)
 - [Connecting a client](#connecting-a-client)
 
 ## Endpoint
@@ -282,6 +283,79 @@ text. A listener that throws is logged and does not change the answer: the call 
 version, the client as reported (`clientInfo`, sanitised, ≤ 64 characters) and the cleaned `User-Agent` product token.
 Self-reported values are for display ("reported as"), never for decisions. During `tools/call` the context also names
 the tool (`toolName`), so listeners of your own write events can add it to their audit rows.
+
+## Using it from a DDD / hexagonal application
+
+McpKit is an **inbound infrastructure adapter**: an MCP transport, like a controller layer. It has no entities, no
+persistence and no Doctrine dependency, and it stores no tokens. Your domain never needs to know it exists.
+
+**Where things go**
+
+| MCP piece | Your hexagon |
+| --- | --- |
+| `McpAuthenticatorInterface` | infrastructure: looks the bearer token up through your token repository port and builds an `McpPrincipal` |
+| `McpPrincipal::$grants` / `$hostContext` | your access scope (opaque strings / one value object of yours) |
+| `McpToolAuthorizerInterface` | infrastructure: maps `requires` and `grants` to your authorization rules |
+| `McpRateLimiterInterface`, `McpAvailabilityInterface` | infrastructure adapters over your limiter / maintenance state |
+| `McpToolInterface`, `McpResourceTemplateInterface` | thin adapters: arguments → command/query → array |
+| `McpToolCallEvent` listener | bridge to your audit port (write tools refuse with `AUDIT_001` without one) |
+
+`McpPrincipal::$user` must be the firewall's security user (same instance, or a `UserInterface` with the same
+identifier); it does not have to be a domain or Doctrine object.
+
+**A tool as an adapter**
+
+```php
+final readonly class TaskGetTool implements McpToolInterface
+{
+    public function __construct(private GetTaskHandler $handler) {} // application service, no MCP types
+
+    public static function definition(): McpToolDefinition { /* static, see Tools */ }
+
+    public function call(McpToolCall $call): McpToolResult
+    {
+        $scope = $call->principal->hostContext;
+        assert($scope instanceof AccessScope); // your value object, built by your authenticator
+
+        try {
+            $task = $this->handler->handle(new GetTask($scope, $call->arguments['id'])); // returns a read model
+        } catch (TaskNotFound) {
+            throw McpToolError::notFound();
+        }
+
+        return McpToolResult::ok(
+            ['id' => $task->id, 'untrusted' => McpUntrusted::of(['title' => $task->title])],
+            ['task' => $task->id],
+        );
+    }
+}
+```
+
+Keep MCP types (`McpToolCall`, `McpToolResult`, `McpToolError`, `McpUntrusted`) and `$call->request` inside the
+adapter; pass only your own commands and value objects inward.
+
+**Audit bridge**
+
+```php
+#[AsEventListener]
+final readonly class McpAuditBridge
+{
+    public function __construct(private AuditLog $audit) {} // your port
+
+    public function __invoke(McpToolCallEvent $event): void
+    {
+        $this->audit->record($event->principal->tokenId, $event->name, $event->outcome->value, $event->auditIds, $event->changedFields);
+    }
+}
+```
+
+**Known limitations**
+
+- `McpPrincipal::$user` and `$hostContext` are untyped `object`: check the type in each tool.
+- Only `McpToolError` becomes a business result; translate domain exceptions in the tool, anything else answers
+  `-32603` without detail.
+- The default rate limiter refuses every request: you must provide a `McpRateLimiterInterface` adapter.
+- Audit is delivered only as a Symfony event (`McpToolCallEvent`).
 
 ## Connecting a client
 
