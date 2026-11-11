@@ -77,17 +77,20 @@ final class McpHttpRequestTest extends TestCase
     public function everyViewOfTheObjectRedactsCredentials(): void
     {
         $request = new McpHttpRequest('POST', '/mcp', [
-            'Authorization'       => 'Bearer ' . self::SECRET,
-            'Proxy-Authorization' => self::SECRET,
-            'Cookie'              => 'sid=' . self::SECRET,
-            'X-Api-Key'           => self::SECRET,
-            'X-Mcp-Key'           => self::SECRET,
-            'X-Jwt'               => self::SECRET,
-            'X-Client-Cert'       => self::SECRET,
-            'Mcp-Session-Id'      => self::SECRET,
-            'Accept'              => 'application/json',
-            'Mcp-Method'          => 'tools/call',
-            'X-Forwarded-For'     => '198.51.100.7',
+            'Authorization'            => 'Bearer ' . self::SECRET,
+            'Proxy-Authorization'      => self::SECRET,
+            'Cookie'                   => 'sid=' . self::SECRET,
+            'X-Api-Key'                => self::SECRET,
+            'X-Mcp-Key'                => self::SECRET,
+            'X-Jwt'                    => self::SECRET,
+            'X-Client-Cert'            => self::SECRET,
+            'Mcp-Session-Id'           => self::SECRET,
+            'Mcp-Token'                => self::SECRET,
+            'X-Forwarded-Access-Token' => self::SECRET,
+            'X-Forwarded-User'         => self::SECRET,
+            'Accept'                   => 'application/json',
+            'Mcp-Method'               => 'tools/call',
+            'X-Forwarded-For'          => '198.51.100.7',
         ], '203.0.113.9');
 
         self::assertSame(self::SECRET, $request->credential());
@@ -119,10 +122,10 @@ final class McpHttpRequestTest extends TestCase
         self::assertSame([McpHttpRequest::REDACTED], $request->redactedHeaders()['authorization']);
         self::assertSame([McpHttpRequest::REDACTED], $request->jsonSerialize()['headers']['x-mcp-key']);
 
-        foreach (['PHP_AUTH_PW', 'X-Access-Key', 'X-Bearer', 'X-Pass', 'Mcp-Session-Id', 'Anything-Else'] as $name) {
+        foreach (['PHP_AUTH_PW', 'X-Access-Key', 'X-Bearer', 'X-Pass', 'Mcp-Session-Id', 'Anything-Else', 'X-Forwarded-Access-Token', 'X-Forwarded-User', 'X-Forwarded-Email', 'Mcp-Token', 'Mcp-Api-Key', 'Mcp-Authorization'] as $name) {
             self::assertTrue(McpHttpRequest::isSensitiveHeader($name), $name);
         }
-        foreach (['Mcp-Method', 'MCP-Protocol-Version', 'Accept', 'Content-Type', 'Content-Length', 'Origin', 'User-Agent', 'Host', 'X-Forwarded-Proto'] as $name) {
+        foreach (['Mcp-Method', 'MCP-Protocol-Version', 'Mcp-Name', 'Accept', 'Content-Type', 'Content-Length', 'Origin', 'User-Agent', 'Host', 'X-Forwarded-For', 'X-Forwarded-Proto', 'X-Forwarded-Host', 'X-Forwarded-Port', 'X-Forwarded-Prefix'] as $name) {
             self::assertFalse(McpHttpRequest::isSensitiveHeader($name), $name);
         }
 

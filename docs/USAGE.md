@@ -94,7 +94,7 @@ The principal is built per request and never kept. `$tokenId` is an opaque id, n
 
 `McpHttpRequest::credential()` reads the `Authorization` header only (with or without `Bearer`), never the query
 string. Redaction is an allowlist: only `Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`,
-`X-Forwarded-*` and `Mcp-*` (except session headers) are kept in clear. The raw value of any other header is not
+`X-Forwarded-For` / `-Proto` / `-Host` / `-Port` / `-Prefix` and `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` are kept in clear. The raw value of any other header is not
 stored in a property of the object (it is held in an internal `WeakMap` keyed by the object), so `dump()` / the
 profiler, `var_export()`, `print_r()`, an `(array)` cast, `json_encode()` / Monolog context and `serialize()` all show
 `[redacted]`; read those headers with `header()` / `credential()` only. A copy restored by `unserialize()` or made by

@@ -44,8 +44,8 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
   do not repeat" text, so an agent is told not to repeat it (error results are exempt from the output schema).
 - Tools receive the request as `McpHttpRequest` (`$call->http`; the HttpFoundation `$call->request` is deprecated);
   they must not read credentials from it. Since 1.1 the hooks receive the same `McpHttpRequest`. Redaction is an
-  allowlist: only `Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`, `X-Forwarded-*` and
-  `Mcp-*` (except session headers) are shown in clear; the raw values of all other headers are kept out of the
+  allowlist: only `Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`, `X-Forwarded-For` / `-Proto` / `-Host` / `-Port` / `-Prefix` and
+  `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` are shown in clear; the raw values of all other headers are kept out of the
   object's properties (an internal `WeakMap` keyed by the object, collected with it), so VarDumper / the profiler,
   `var_export()`, `print_r()`, `(array)`, `json_encode()` and `serialize()` never write the token. It never carries the
   body. Building it never fails on conflicting `Forwarded` / `X-Forwarded-For` headers (`clientIp` is then null), so

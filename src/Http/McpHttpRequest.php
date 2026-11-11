@@ -13,8 +13,6 @@ use function array_key_exists;
 use function array_keys;
 use function in_array;
 use function is_string;
-use function str_contains;
-use function str_starts_with;
 use function strtolower;
 use function strtr;
 
@@ -28,8 +26,7 @@ use function strtr;
  * headers. It never carries the body: the hooks run before the body is read and capped, and tools receive the
  * validated arguments instead.
  *
- * Redaction is an allowlist: only {@see SAFE_HEADERS}, `mcp-*` (except session headers) and `x-forwarded-*` are kept in
- * clear. The raw value of every other header (`Authorization`, `Cookie`, API keys, custom tokens, …) is never stored in
+ * Redaction is an exact allowlist: only the names in {@see SAFE_HEADERS} are kept in clear. The raw value of every other header (`Authorization`, `Cookie`, API keys, custom tokens, …) is never stored in
  * a property of this object: it lives in an internal {@see \WeakMap} keyed by the object and is readable through
  * {@see header()}, {@see headerValues()} and {@see credential()} only. Every other view of the object (VarDumper /
  * `dump()` / the profiler, `var_export()`, `print_r()`, `(array)` cast, {@see __toString()}, {@see jsonSerialize()},
@@ -41,8 +38,15 @@ final readonly class McpHttpRequest implements JsonSerializable
     /** Replacement of a sensitive header value in every view of the object. */
     public const REDACTED = '[redacted]';
 
-    /** Header names (lower case) shown in clear; `mcp-*` (except session headers) and `x-forwarded-*` too. */
-    public const SAFE_HEADERS = ['accept', 'accept-encoding', 'accept-language', 'content-type', 'content-length', 'origin', 'user-agent', 'host'];
+    /**
+     * The only header names (lower case) shown in clear: exact names, no prefixes, so a custom `Mcp-Token` or an
+     * `X-Forwarded-Access-Token` set by an auth proxy is redacted.
+     */
+    public const SAFE_HEADERS = [
+        'accept', 'accept-encoding', 'accept-language', 'content-type', 'content-length', 'origin', 'user-agent', 'host',
+        'x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-forwarded-port', 'x-forwarded-prefix',
+        'mcp-protocol-version', 'mcp-method', 'mcp-name',
+    ];
 
     /** @var array<string, list<string>> lower-case header name => values, sensitive ones replaced by {@see REDACTED} */
     private array $headers;
@@ -144,8 +148,7 @@ final readonly class McpHttpRequest implements JsonSerializable
     }
 
     /**
-     * Whether a header name is treated as a secret: every header outside the allowlist ({@see SAFE_HEADERS},
-     * `mcp-*` except session headers, `x-forwarded-*`).
+     * Whether a header name is treated as a secret: every header outside the exact allowlist {@see SAFE_HEADERS}.
      *
      * @param string $name header name (case-insensitive)
      *
@@ -154,11 +157,8 @@ final readonly class McpHttpRequest implements JsonSerializable
     public static function isSensitiveHeader(string $name): bool
     {
         $key = self::normalizeName($name);
-        if (in_array($key, self::SAFE_HEADERS, true) || str_starts_with($key, 'x-forwarded-')) {
-            return false;
-        }
 
-        return !str_starts_with($key, 'mcp-') || str_contains($key, 'session');
+        return !in_array($key, self::SAFE_HEADERS, true);
     }
 
     /**

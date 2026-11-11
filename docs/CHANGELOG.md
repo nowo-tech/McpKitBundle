@@ -13,7 +13,8 @@ HttpFoundation types; the `Request`-typed ones are deprecated and stay until 2.0
 - `Http\McpHttpRequest`: framework-free view of the endpoint request (method, path, scheme, host, client IP after
   `trusted_proxies`, headers; never the body), with `credential()` (same rules as before: `Authorization` only).
   Redaction is an allowlist (`Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`,
-  `X-Forwarded-*`, `Mcp-*` except session headers are shown in clear); the raw values of every other header are kept
+  `X-Forwarded-For` / `-Proto` / `-Host` / `-Port` / `-Prefix`, `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` are
+  shown in clear; exact names, no prefixes); the raw values of every other header are kept
   out of the object's properties (internal `WeakMap`), so VarDumper, `var_export()`, `print_r()`, `(array)`,
   `json_encode()` and `serialize()` show `[redacted]`. Restored or cloned copies carry no credential. Conflicting
   forwarding headers give `clientIp: null` instead of an exception, so the early refusals keep their status (audit
