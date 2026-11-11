@@ -5,6 +5,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-11
+
 Minor release (1.1.0): REQ-ARCH-001 rule 3. Every host-facing port, event and value object now has a variant without
 HttpFoundation types; the `Request`-typed ones are deprecated and stay until 2.0.0. Standard hosts need no change.
 
