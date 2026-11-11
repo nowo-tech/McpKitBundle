@@ -8,6 +8,7 @@ use Nowo\McpKitBundle\Context\McpCallContext;
 use Nowo\McpKitBundle\Context\McpCallContextProvider;
 use Nowo\McpKitBundle\Http\McpHttpRequest;
 use Nowo\McpKitBundle\Http\McpHttpRequestFactory;
+use Nowo\McpKitBundle\Http\McpHttpRequestSecrets;
 use Nowo\McpKitBundle\Protocol\McpEra;
 use Nowo\McpKitBundle\Security\AlwaysAvailable;
 use Nowo\McpKitBundle\Security\McpAvailability;
@@ -22,19 +23,25 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\VarDumper\Cloner\VarCloner;
+use Symfony\Component\VarDumper\Dumper\CliDumper;
 
 use function json_encode;
+use function ob_get_clean;
+use function ob_start;
 use function print_r;
 use function serialize;
 use function strlen;
 use function substr;
 use function unserialize;
+use function var_dump;
 use function var_export;
 
 use const JSON_THROW_ON_ERROR;
 
 #[CoversClass(McpHttpRequest::class)]
 #[CoversClass(McpHttpRequestFactory::class)]
+#[CoversClass(McpHttpRequestSecrets::class)]
 #[CoversClass(McpCredential::class)]
 #[CoversClass(AlwaysAvailable::class)]
 #[CoversClass(McpCallContext::class)]
@@ -67,34 +74,60 @@ final class McpHttpRequestTest extends TestCase
     }
 
     #[Test]
-    public function everyLoggableFormRedactsCredentials(): void
+    public function everyViewOfTheObjectRedactsCredentials(): void
     {
         $request = new McpHttpRequest('POST', '/mcp', [
             'Authorization'       => 'Bearer ' . self::SECRET,
             'Proxy-Authorization' => self::SECRET,
             'Cookie'              => 'sid=' . self::SECRET,
             'X-Api-Key'           => self::SECRET,
-            'X-Custom-Token'      => self::SECRET,
-            'X-Session-Ref'       => self::SECRET,
+            'X-Mcp-Key'           => self::SECRET,
+            'X-Jwt'               => self::SECRET,
+            'X-Client-Cert'       => self::SECRET,
+            'Mcp-Session-Id'      => self::SECRET,
             'Accept'              => 'application/json',
+            'Mcp-Method'          => 'tools/call',
+            'X-Forwarded-For'     => '198.51.100.7',
         ], '203.0.113.9');
 
         self::assertSame(self::SECRET, $request->credential());
-        $dumps = [
-            (string) $request,
-            json_encode($request, JSON_THROW_ON_ERROR),
-            print_r($request, true),
-            var_export($request->__debugInfo(), true),
-            serialize($request),
+        self::assertSame(self::SECRET, $request->header('x-jwt'));
+        self::assertSame([self::SECRET], $request->headerValues('Mcp-Session-Id'));
+
+        $cloner = new VarCloner();
+        $dumper = new CliDumper();
+        ob_start();
+        var_dump($request);
+        $varDump = (string) ob_get_clean();
+        $dumps   = [
+            'string'     => (string) $request,
+            'json'       => json_encode($request, JSON_THROW_ON_ERROR),
+            'print_r'    => print_r($request, true),
+            'var_dump'   => $varDump,
+            'var_export' => var_export($request, true),
+            'array cast' => var_export((array) $request, true),
+            'serialize'  => serialize($request),
+            'VarDumper'  => (string) $dumper->dump($cloner->cloneVar($request), true),
         ];
-        foreach ($dumps as $dump) {
-            self::assertStringNotContainsString(self::SECRET, $dump);
+        foreach ($dumps as $form => $dump) {
+            self::assertStringNotContainsString(self::SECRET, $dump, $form);
         }
+        self::assertStringContainsString('tools/call', $dumps['VarDumper']);
         self::assertSame(['application/json'], $request->redactedHeaders()['accept']);
+        self::assertSame(['tools/call'], $request->redactedHeaders()['mcp-method']);
+        self::assertSame(['198.51.100.7'], $request->redactedHeaders()['x-forwarded-for']);
         self::assertSame([McpHttpRequest::REDACTED], $request->redactedHeaders()['authorization']);
-        self::assertSame([McpHttpRequest::REDACTED], $request->jsonSerialize()['headers']['x-custom-token']);
-        self::assertTrue(McpHttpRequest::isSensitiveHeader('PHP_AUTH_PW'));
-        self::assertFalse(McpHttpRequest::isSensitiveHeader('Mcp-Method'));
+        self::assertSame([McpHttpRequest::REDACTED], $request->jsonSerialize()['headers']['x-mcp-key']);
+
+        foreach (['PHP_AUTH_PW', 'X-Access-Key', 'X-Bearer', 'X-Pass', 'Mcp-Session-Id', 'Anything-Else'] as $name) {
+            self::assertTrue(McpHttpRequest::isSensitiveHeader($name), $name);
+        }
+        foreach (['Mcp-Method', 'MCP-Protocol-Version', 'Accept', 'Content-Type', 'Content-Length', 'Origin', 'User-Agent', 'Host', 'X-Forwarded-Proto'] as $name) {
+            self::assertFalse(McpHttpRequest::isSensitiveHeader($name), $name);
+        }
+
+        $copy = clone $request;
+        self::assertNull($copy->credential(), 'a clone carries no secret values');
     }
 
     #[Test]
@@ -110,18 +143,21 @@ final class McpHttpRequestTest extends TestCase
         self::assertSame('http', $copy->scheme);
         self::assertSame('localhost', $copy->host);
         self::assertSame('application/json', $copy->header('Accept'));
-        self::assertSame(McpHttpRequest::REDACTED, $copy->credential());
+        self::assertNull($copy->credential());
+        self::assertTrue($copy->hasHeader('Authorization'));
 
         // A hand-made payload with missing and malformed fields.
         $class = McpHttpRequest::class;
-        $empty = unserialize('O:' . strlen($class) . ':"' . $class . '":' . substr(serialize(['headers' => ['X-A' => ['ok', 5], 'X-B' => 'one']]), 2));
+        $empty = unserialize('O:' . strlen($class) . ':"' . $class . '":' . substr(serialize(['headers' => ['Accept' => ['ok', 5], 'Mcp-Method' => 'one', 'Authorization' => 'Bearer x']]), 2));
         self::assertInstanceOf(McpHttpRequest::class, $empty);
         self::assertSame('', $empty->method);
         self::assertSame('', $empty->path);
         self::assertSame('https', $empty->scheme);
         self::assertSame('', $empty->host);
-        self::assertSame(['ok'], $empty->headerValues('x-a'));
-        self::assertSame(['one'], $empty->headerValues('x-b'));
+        self::assertSame(['ok'], $empty->headerValues('accept'));
+        self::assertSame(['one'], $empty->headerValues('mcp-method'));
+        self::assertNull($empty->credential());
+        self::assertSame([McpHttpRequest::REDACTED], $empty->redactedHeaders()['authorization']);
     }
 
     #[Test]
@@ -141,6 +177,25 @@ final class McpHttpRequestTest extends TestCase
         self::assertSame('', $request->header('X-Null'));
         self::assertSame(McpCredential::fromHeader($symfony->headers->get('Authorization')), $request->credential());
         self::assertStringNotContainsString('secret body', print_r($request, true));
+    }
+
+    #[Test]
+    public function conflictingForwardingHeadersGiveAnUnknownClientIp(): void
+    {
+        $proxies = Request::getTrustedProxies();
+        /** @var int<0, 63> $headerSet */
+        $headerSet = Request::getTrustedHeaderSet();
+        Request::setTrustedProxies(['203.0.113.9'], Request::HEADER_FORWARDED | Request::HEADER_X_FORWARDED_FOR);
+        try {
+            $symfony = Request::create('/mcp', 'POST', [], [], [], ['REMOTE_ADDR' => '203.0.113.9', 'HTTP_FORWARDED' => 'for=198.51.100.8', 'HTTP_X_FORWARDED_FOR' => '198.51.100.7']);
+            self::assertNull(McpHttpRequestFactory::fromRequest($symfony)->clientIp);
+
+            $forwarded = Request::create('/mcp', 'POST', [], [], [], ['REMOTE_ADDR' => '203.0.113.9', 'HTTP_X_FORWARDED_FOR' => '198.51.100.7']);
+            self::assertSame('198.51.100.7', McpHttpRequestFactory::fromRequest($forwarded)->clientIp);
+        } finally {
+            /* @var int<0, 63> $headerSet */
+            Request::setTrustedProxies($proxies, $headerSet);
+        }
     }
 
     /**

@@ -12,13 +12,17 @@ HttpFoundation types; the `Request`-typed ones are deprecated and stay until 2.0
 
 - `Http\McpHttpRequest`: framework-free view of the endpoint request (method, path, scheme, host, client IP after
   `trusted_proxies`, headers; never the body), with `credential()` (same rules as before: `Authorization` only).
-  Every loggable form (`__toString()`, `__debugInfo()`, `jsonSerialize()`, `serialize()`) redacts credential-like
-  headers (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys, names containing `token`, `secret`,
-  `session`, …).
+  Redaction is an allowlist (`Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`,
+  `X-Forwarded-*`, `Mcp-*` except session headers are shown in clear); the raw values of every other header are kept
+  out of the object's properties (internal `WeakMap`), so VarDumper, `var_export()`, `print_r()`, `(array)`,
+  `json_encode()` and `serialize()` show `[redacted]`. Restored or cloned copies carry no credential. Conflicting
+  forwarding headers give `clientIp: null` instead of an exception, so the early refusals keep their status (audit
+  MN-M-L1, L2, L3, I1).
 - `Security\McpRequestAuthenticatorInterface::authenticateRequest(McpHttpRequest)` and
   `Security\McpRequestAvailabilityInterface::availabilityOf(McpHttpRequest)`: twins of the two host hooks. When a
   service implements both the old and the new port, the bundle calls the new one. Order of checks, deny-by-default,
-  token checks, budgets and answers are unchanged (old-vs-new equivalence test over 19 scenarios:
+  token checks, budgets and answers are unchanged (old-vs-new equivalence test over 26 scenarios, including a dual
+  availability class, a trusted proxy and conflicting forwarding headers:
   `tests/Integration/Kernel/HostPortEquivalenceTest.php`).
 - `McpToolCall::$http` / `McpResourceRead::$http` (`McpHttpRequest`), `McpCredential::fromHeader()`,
   `McpCallContext::fromAttribute()`.

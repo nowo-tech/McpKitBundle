@@ -11,10 +11,10 @@ use Nowo\McpKitBundle\Security\McpRequestAvailabilityInterface;
 
 use function array_key_exists;
 use function array_keys;
-use function array_values;
 use function in_array;
 use function is_string;
-use function preg_match;
+use function str_contains;
+use function str_starts_with;
 use function strtolower;
 use function strtr;
 
@@ -28,23 +28,23 @@ use function strtr;
  * headers. It never carries the body: the hooks run before the body is read and capped, and tools receive the
  * validated arguments instead.
  *
- * Headers that hold credentials (`Authorization`, `Cookie`, API keys, …) are readable through {@see header()} and
- * {@see credential()} only. Every loggable form of the object ({@see __toString()}, {@see __debugInfo()},
- * {@see jsonSerialize()}, `serialize()`) redacts them, so a VO that reaches a log, a dump or a cache never holds the
- * token.
+ * Redaction is an allowlist: only {@see SAFE_HEADERS}, `mcp-*` (except session headers) and `x-forwarded-*` are kept in
+ * clear. The raw value of every other header (`Authorization`, `Cookie`, API keys, custom tokens, …) is never stored in
+ * a property of this object: it lives in an internal {@see \WeakMap} keyed by the object and is readable through
+ * {@see header()}, {@see headerValues()} and {@see credential()} only. Every other view of the object (VarDumper /
+ * `dump()` / the profiler, `var_export()`, `print_r()`, `(array)` cast, {@see __toString()}, {@see jsonSerialize()},
+ * `serialize()`) shows `[redacted]`. A copy restored by `unserialize()` or made by `clone` has no secret values
+ * (`credential()` returns null).
  */
 final readonly class McpHttpRequest implements JsonSerializable
 {
-    /** Replacement of a sensitive header value in every loggable form. */
+    /** Replacement of a sensitive header value in every view of the object. */
     public const REDACTED = '[redacted]';
 
-    /** Header names (lower case) always treated as secrets. */
-    public const SENSITIVE_HEADERS = ['authorization', 'proxy-authorization', 'cookie', 'set-cookie', 'x-api-key', 'x-auth-token', 'x-csrf-token', 'x-xsrf-token', 'php-auth-pw', 'php-auth-user', 'php-auth-digest'];
+    /** Header names (lower case) shown in clear; `mcp-*` (except session headers) and `x-forwarded-*` too. */
+    public const SAFE_HEADERS = ['accept', 'accept-encoding', 'accept-language', 'content-type', 'content-length', 'origin', 'user-agent', 'host'];
 
-    /** Any other header whose name matches this pattern is treated as a secret too. */
-    private const SENSITIVE_PATTERN = '/(auth|token|secret|password|passwd|cookie|session|api[-_]?key|credential|signature)/i';
-
-    /** @var array<string, list<string>> lower-case header name => values */
+    /** @var array<string, list<string>> lower-case header name => values, sensitive ones replaced by {@see REDACTED} */
     private array $headers;
 
     /**
@@ -67,13 +67,21 @@ final readonly class McpHttpRequest implements JsonSerializable
         public string $host = '',
     ) {
         $normalized = [];
+        $secrets    = [];
         foreach ($headers as $name => $values) {
-            $key = self::normalizeName((string) $name);
+            $key       = self::normalizeName((string) $name);
+            $sensitive = self::isSensitiveHeader($key);
             foreach (is_string($values) ? [$values] : $values as $value) {
-                $normalized[$key][] = $value;
+                $normalized[$key][] = $sensitive ? self::REDACTED : $value;
+                if ($sensitive) {
+                    $secrets[$key][] = $value;
+                }
             }
         }
         $this->headers = $normalized;
+        if ($secrets !== []) {
+            McpHttpRequestSecrets::put($this, $secrets);
+        }
     }
 
     /**
@@ -85,7 +93,7 @@ final readonly class McpHttpRequest implements JsonSerializable
      */
     public function header(string $name): ?string
     {
-        return $this->headers[self::normalizeName($name)][0] ?? null;
+        return $this->headerValues($name)[0] ?? null;
     }
 
     /**
@@ -97,7 +105,9 @@ final readonly class McpHttpRequest implements JsonSerializable
      */
     public function headerValues(string $name): array
     {
-        return $this->headers[self::normalizeName($name)] ?? [];
+        $key = self::normalizeName($name);
+
+        return self::isSensitiveHeader($key) ? McpHttpRequestSecrets::get($this, $key) : ($this->headers[$key] ?? []);
     }
 
     /**
@@ -134,7 +144,8 @@ final readonly class McpHttpRequest implements JsonSerializable
     }
 
     /**
-     * Whether a header name is treated as a secret (redacted in every loggable form).
+     * Whether a header name is treated as a secret: every header outside the allowlist ({@see SAFE_HEADERS},
+     * `mcp-*` except session headers, `x-forwarded-*`).
      *
      * @param string $name header name (case-insensitive)
      *
@@ -143,8 +154,11 @@ final readonly class McpHttpRequest implements JsonSerializable
     public static function isSensitiveHeader(string $name): bool
     {
         $key = self::normalizeName($name);
+        if (in_array($key, self::SAFE_HEADERS, true) || str_starts_with($key, 'x-forwarded-')) {
+            return false;
+        }
 
-        return in_array($key, self::SENSITIVE_HEADERS, true) || preg_match(self::SENSITIVE_PATTERN, $key) === 1;
+        return !str_starts_with($key, 'mcp-') || str_contains($key, 'session');
     }
 
     /**
@@ -156,7 +170,7 @@ final readonly class McpHttpRequest implements JsonSerializable
     {
         $redacted = [];
         foreach ($this->headers as $name => $values) {
-            $redacted[$name] = self::isSensitiveHeader($name) ? [self::REDACTED] : array_values($values);
+            $redacted[$name] = self::isSensitiveHeader($name) ? [self::REDACTED] : $values;
         }
 
         return $redacted;
@@ -173,7 +187,8 @@ final readonly class McpHttpRequest implements JsonSerializable
     }
 
     /**
-     * Dump form (`var_dump()`, Symfony VarDumper): credentials redacted.
+     * Dump form (`var_dump()`, `print_r()`): credentials redacted. VarDumper, `var_export()` and `(array)` read the
+     * properties, which never hold a raw sensitive value.
      *
      * @return array<string, mixed> the redacted fields
      */
@@ -216,9 +231,11 @@ final readonly class McpHttpRequest implements JsonSerializable
         $this->clientIp = is_string($data['clientIp'] ?? null) ? $data['clientIp'] : null;
         $headers        = [];
         foreach ((array) ($data['headers'] ?? []) as $name => $values) {
+            $key = self::normalizeName((string) $name);
             foreach ((array) $values as $value) {
                 if (is_string($value)) {
-                    $headers[self::normalizeName((string) $name)][] = $value;
+                    // No secret store entry: a restored copy never yields a credential.
+                    $headers[$key][] = self::isSensitiveHeader($key) ? self::REDACTED : $value;
                 }
             }
         }

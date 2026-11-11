@@ -93,9 +93,12 @@ final readonly class TokenAuthenticator implements McpRequestAuthenticatorInterf
 The principal is built per request and never kept. `$tokenId` is an opaque id, never the secret.
 
 `McpHttpRequest::credential()` reads the `Authorization` header only (with or without `Bearer`), never the query
-string. Every loggable form of the object (`__toString()`, `__debugInfo()` / `dump()`, `json_encode()` / Monolog
-context, `serialize()`) replaces credential-like headers (`Authorization`, `Cookie`, API keys, names containing
-`token`, `secret`, `session`, …) with `[redacted]`; read them with `header()` / `credential()` only.
+string. Redaction is an allowlist: only `Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`,
+`X-Forwarded-*` and `Mcp-*` (except session headers) are kept in clear. The raw value of any other header is not
+stored in a property of the object (it is held in an internal `WeakMap` keyed by the object), so `dump()` / the
+profiler, `var_export()`, `print_r()`, an `(array)` cast, `json_encode()` / Monolog context and `serialize()` all show
+`[redacted]`; read those headers with `header()` / `credential()` only. A copy restored by `unserialize()` or made by
+`clone` carries no secret values (`credential()` is null).
 
 | Hook | Port (1.1+) | Deprecated port (removed in 2.0) |
 | --- | --- | --- |

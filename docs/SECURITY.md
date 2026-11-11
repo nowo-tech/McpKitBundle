@@ -43,10 +43,13 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - A committed write whose result cannot be shown answers the error result `SAVED_001` with its ids and a fixed "saved,
   do not repeat" text, so an agent is told not to repeat it (error results are exempt from the output schema).
 - Tools receive the request as `McpHttpRequest` (`$call->http`; the HttpFoundation `$call->request` is deprecated);
-  they must not read credentials from it. Since 1.1 the hooks receive the same `McpHttpRequest`: its `__toString()`,
-  `__debugInfo()`, `jsonSerialize()` and `serialize()` forms redact `Authorization`, `Proxy-Authorization`, `Cookie`,
-  API-key headers and any header whose name contains `auth`, `token`, `secret`, `password`, `cookie`, `session`,
-  `credential` or `signature`, so passing the VO to a logger or a dump never writes the token. It never carries the body.
+  they must not read credentials from it. Since 1.1 the hooks receive the same `McpHttpRequest`. Redaction is an
+  allowlist: only `Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`, `X-Forwarded-*` and
+  `Mcp-*` (except session headers) are shown in clear; the raw values of all other headers are kept out of the
+  object's properties (an internal `WeakMap` keyed by the object, collected with it), so VarDumper / the profiler,
+  `var_export()`, `print_r()`, `(array)`, `json_encode()` and `serialize()` never write the token. It never carries the
+  body. Building it never fails on conflicting `Forwarded` / `X-Forwarded-For` headers (`clientIp` is then null), so
+  the early refusals (404, 403, 405, 503) answer as before.
 - A tool declared `ReadOnly` that writes skips the audit gate and the write budget: the kit cannot detect it, so host
   review must.
 

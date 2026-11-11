@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\McpKitBundle\Http;
 
+use Symfony\Component\HttpFoundation\Exception\ConflictingHeadersException;
 use Symfony\Component\HttpFoundation\Request;
 
 use function is_string;
@@ -33,11 +34,19 @@ final class McpHttpRequestFactory
             }
         }
 
+        try {
+            $clientIp = $request->getClientIp();
+        } catch (ConflictingHeadersException) {
+            // Forwarded and X-Forwarded-For disagree: unknown here. The endpoint's own failed-token check still reads
+            // the request and refuses it exactly as before; building this view must not answer earlier checks.
+            $clientIp = null;
+        }
+
         return new McpHttpRequest(
             $request->getMethod(),
             $request->getPathInfo(),
             $headers,
-            $request->getClientIp(),
+            $clientIp,
             $request->getScheme(),
             $request->getHost(),
         );
