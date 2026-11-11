@@ -5,6 +5,32 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+Minor release (1.1.0): REQ-ARCH-001 rule 3. Every host-facing port, event and value object now has a variant without
+HttpFoundation types; the `Request`-typed ones are deprecated and stay until 2.0.0. Standard hosts need no change.
+
+### Added
+
+- `Http\McpHttpRequest`: framework-free view of the endpoint request (method, path, scheme, host, client IP after
+  `trusted_proxies`, headers; never the body), with `credential()` (same rules as before: `Authorization` only).
+  Every loggable form (`__toString()`, `__debugInfo()`, `jsonSerialize()`, `serialize()`) redacts credential-like
+  headers (`Authorization`, `Proxy-Authorization`, `Cookie`, API keys, names containing `token`, `secret`,
+  `session`, …).
+- `Security\McpRequestAuthenticatorInterface::authenticateRequest(McpHttpRequest)` and
+  `Security\McpRequestAvailabilityInterface::availabilityOf(McpHttpRequest)`: twins of the two host hooks. When a
+  service implements both the old and the new port, the bundle calls the new one. Order of checks, deny-by-default,
+  token checks, budgets and answers are unchanged (old-vs-new equivalence test over 19 scenarios:
+  `tests/Integration/Kernel/HostPortEquivalenceTest.php`).
+- `McpToolCall::$http` / `McpResourceRead::$http` (`McpHttpRequest`), `McpCredential::fromHeader()`,
+  `McpCallContext::fromAttribute()`.
+- DDD-host kernel test (`tests/Integration/Kernel/DddHostKernelTest.php`); USAGE sections "Standard Symfony host" and
+  "DDD host".
+
+### Deprecated
+
+- `McpAuthenticatorInterface`, `McpAvailabilityInterface` (use the `McpRequest*` twins), `McpCredential::fromRequest()`,
+  `McpCallContext::fromRequest()`, `McpToolCall::$request`, `McpResourceRead::$request`, `AlwaysAvailable::state()`.
+  All are removed in 2.0.0; see [UPGRADING](UPGRADING.md#upgrading-to-110).
+
 ## [1.0.0] - 2026-11-08
 
 First release: a stateless MCP Streamable HTTP server for Symfony (spec 219). Transport, tool and resource registries, host authentication hooks, limits and audit; the tools stay in the host. Independent audit: Appendix IH, Pass / Info.

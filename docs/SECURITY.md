@@ -42,7 +42,11 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - Schemas resolve only local `$defs`; nothing is fetched.
 - A committed write whose result cannot be shown answers the error result `SAVED_001` with its ids and a fixed "saved,
   do not repeat" text, so an agent is told not to repeat it (error results are exempt from the output schema).
-- Tools receive the whole `Request` (through `McpToolCall`); they must not read credentials from it.
+- Tools receive the request as `McpHttpRequest` (`$call->http`; the HttpFoundation `$call->request` is deprecated);
+  they must not read credentials from it. Since 1.1 the hooks receive the same `McpHttpRequest`: its `__toString()`,
+  `__debugInfo()`, `jsonSerialize()` and `serialize()` forms redact `Authorization`, `Proxy-Authorization`, `Cookie`,
+  API-key headers and any header whose name contains `auth`, `token`, `secret`, `password`, `cookie`, `session`,
+  `credential` or `signature`, so passing the VO to a logger or a dump never writes the token. It never carries the body.
 - A tool declared `ReadOnly` that writes skips the audit gate and the write budget: the kit cannot detect it, so host
   review must.
 

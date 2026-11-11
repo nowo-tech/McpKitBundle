@@ -14,11 +14,12 @@ use Nowo\McpKitBundle\Security\McpAuthenticatorInterface;
 use Nowo\McpKitBundle\Security\McpAuthFailure;
 use Nowo\McpKitBundle\Security\McpAvailability;
 use Nowo\McpKitBundle\Security\McpAvailabilityInterface;
-use Nowo\McpKitBundle\Security\McpCredential;
 use Nowo\McpKitBundle\Security\McpFirewallGuard;
 use Nowo\McpKitBundle\Security\McpPrincipal;
 use Nowo\McpKitBundle\Security\McpRateLimiterInterface;
 use Nowo\McpKitBundle\Security\McpRateLimitState;
+use Nowo\McpKitBundle\Security\McpRequestAuthenticatorInterface;
+use Nowo\McpKitBundle\Security\McpRequestAvailabilityInterface;
 use Nowo\McpKitBundle\Server\McpDispatcher;
 use Nowo\McpKitBundle\Server\McpRequest;
 use Psr\Clock\ClockInterface;
@@ -63,9 +64,11 @@ final readonly class McpEndpointController
     /**
      * Creates the controller.
      *
-     * @param McpAuthenticatorInterface $authenticator host token check
+     * @param McpAuthenticatorInterface|McpRequestAuthenticatorInterface $authenticator host token check (the
+     *                                                                                  {@see McpRequestAuthenticatorInterface} method wins when both are implemented)
      * @param McpRateLimiterInterface $rateLimiter host budgets
-     * @param McpAvailabilityInterface $availability host switches
+     * @param McpAvailabilityInterface|McpRequestAvailabilityInterface $availability host switches (the
+     *                                                                               {@see McpRequestAvailabilityInterface} method wins when both are implemented)
      * @param McpFirewallGuard $firewallGuard firewall user check
      * @param McpDispatcher $dispatcher method dispatcher
      * @param McpEndpointOptions $options endpoint options
@@ -73,9 +76,9 @@ final readonly class McpEndpointController
      * @param LoggerInterface|null $logger logger (exception classes only, never bodies or credentials)
      */
     public function __construct(
-        private McpAuthenticatorInterface $authenticator,
+        private McpAuthenticatorInterface|McpRequestAuthenticatorInterface $authenticator,
         private McpRateLimiterInterface $rateLimiter,
-        private McpAvailabilityInterface $availability,
+        private McpAvailabilityInterface|McpRequestAvailabilityInterface $availability,
         private McpFirewallGuard $firewallGuard,
         private McpDispatcher $dispatcher,
         private McpEndpointOptions $options,
@@ -122,7 +125,10 @@ final readonly class McpEndpointController
      */
     private function handle(Request $request, int|string|null &$id, ?McpEra &$era): Response
     {
-        $availability = $this->availability->state($request);
+        $http         = McpHttpRequestFactory::fromRequest($request);
+        $availability = $this->availability instanceof McpRequestAvailabilityInterface
+            ? $this->availability->availabilityOf($http)
+            : $this->availability->state($request);
         if ($availability === McpAvailability::Disabled) {
             return new Response('', Response::HTTP_NOT_FOUND);
         }
@@ -135,7 +141,7 @@ final readonly class McpEndpointController
         }
         $this->checkContentLength($request);
 
-        $principal = $this->authenticate($request);
+        $principal = $this->authenticate($request, $http);
 
         $this->checkMediaTypes($request);
         $message = $this->decode($this->readBody($request));
@@ -205,22 +211,25 @@ final readonly class McpEndpointController
      * Failed-token limit, credential, authenticator, firewall user and token budget.
      *
      * @param Request $request the request
+     * @param McpHttpRequest $http framework-free view of the request
      *
      * @throws JsonRpcError 401, 404 (as an empty answer), 429 or 500
      *
      * @return McpPrincipal the principal
      */
-    private function authenticate(Request $request): McpPrincipal
+    private function authenticate(Request $request, McpHttpRequest $http): McpPrincipal
     {
         $clientIp = (string) $request->getClientIp();
         $blocked  = $this->rateLimiter->failedTokenState($clientIp);
         if (!$blocked->accepted) {
             throw JsonRpcError::rateLimited($blocked, 'failed_tokens', $this->clock->now()->getTimestamp());
         }
-        if (McpCredential::fromRequest($request) === null) {
+        if ($http->credential() === null) {
             throw $this->unauthenticated();
         }
-        $principal = $this->authenticator->authenticate($request);
+        $principal = $this->authenticator instanceof McpRequestAuthenticatorInterface
+            ? $this->authenticator->authenticateRequest($http)
+            : $this->authenticator->authenticate($request);
         if ($principal === McpAuthFailure::Disabled) {
             throw new JsonRpcError(0, '', Response::HTTP_NOT_FOUND);
         }

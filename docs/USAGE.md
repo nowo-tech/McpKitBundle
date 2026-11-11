@@ -12,7 +12,8 @@
 - [Untrusted content](#untrusted-content)
 - [Audit event](#audit-event)
 - [Call context](#call-context)
-- [Using it from a DDD / hexagonal application](#using-it-from-a-ddd--hexagonal-application)
+- [Standard Symfony host](#standard-symfony-host)
+- [DDD host](#ddd-host)
 - [Connecting a client](#connecting-a-client)
 
 ## Endpoint
@@ -65,17 +66,21 @@ Every answer carries `Cache-Control: no-store, private` and `X-Content-Type-Opti
 
 ## Hooks
 
-```php
-use Nowo\McpKitBundle\Security\McpAuthenticatorInterface;
-use Nowo\McpKitBundle\Security\McpAuthFailure;
-use Nowo\McpKitBundle\Security\McpCredential;
-use Nowo\McpKitBundle\Security\McpPrincipal;
+The authenticator (required) and the availability switch receive a framework-free `Http\McpHttpRequest`: method,
+path, scheme, host, client IP (after your `trusted_proxies`) and headers. It never carries the body (the hooks run
+before the body is read and capped).
 
-final readonly class TokenAuthenticator implements McpAuthenticatorInterface
+```php
+use Nowo\McpKitBundle\Http\McpHttpRequest;
+use Nowo\McpKitBundle\Security\McpAuthFailure;
+use Nowo\McpKitBundle\Security\McpPrincipal;
+use Nowo\McpKitBundle\Security\McpRequestAuthenticatorInterface;
+
+final readonly class TokenAuthenticator implements McpRequestAuthenticatorInterface
 {
-    public function authenticate(Request $request): McpPrincipal|McpAuthFailure
+    public function authenticateRequest(McpHttpRequest $request): McpPrincipal|McpAuthFailure
     {
-        $token = $this->tokens->findValid(McpCredential::fromRequest($request)); // revoked/expired → null
+        $token = $this->tokens->findValid($request->credential()); // revoked/expired → null
         if ($token === null) {
             return McpAuthFailure::Invalid;
         }
@@ -86,6 +91,21 @@ final readonly class TokenAuthenticator implements McpAuthenticatorInterface
 ```
 
 The principal is built per request and never kept. `$tokenId` is an opaque id, never the secret.
+
+`McpHttpRequest::credential()` reads the `Authorization` header only (with or without `Bearer`), never the query
+string. Every loggable form of the object (`__toString()`, `__debugInfo()` / `dump()`, `json_encode()` / Monolog
+context, `serialize()`) replaces credential-like headers (`Authorization`, `Cookie`, API keys, names containing
+`token`, `secret`, `session`, …) with `[redacted]`; read them with `header()` / `credential()` only.
+
+| Hook | Port (1.1+) | Deprecated port (removed in 2.0) |
+| --- | --- | --- |
+| `hooks.authenticator` | `McpRequestAuthenticatorInterface::authenticateRequest(McpHttpRequest)` | `McpAuthenticatorInterface::authenticate(Request)` |
+| `hooks.availability` | `McpRequestAvailabilityInterface::availabilityOf(McpHttpRequest)` | `McpAvailabilityInterface::state(Request)` |
+| `hooks.authorizer` | `McpToolAuthorizerInterface` (unchanged) | — |
+| `hooks.rate_limiter` | `McpRateLimiterInterface` (unchanged) | — |
+
+Both ports are accepted until 2.0, with the same order of checks and the same answers. When one service implements
+both, the bundle calls the `McpHttpRequest` one.
 
 ## Tools
 
@@ -279,12 +299,33 @@ text. A listener that throws is logged and does not change the answer: the call 
 
 ## Call context
 
-`Context\McpCallContext::fromRequest($request)` (or the `McpCallContextProvider` service) gives the era, the protocol
-version, the client as reported (`clientInfo`, sanitised, ≤ 64 characters) and the cleaned `User-Agent` product token.
-Self-reported values are for display ("reported as"), never for decisions. During `tools/call` the context also names
-the tool (`toolName`), so listeners of your own write events can add it to their audit rows.
+`McpToolCall::$context` / `McpResourceRead::$context` (in a tool), or the `McpCallContextProvider` service (anywhere
+else, e.g. a listener of your own write events), give the era, the protocol version, the client as reported
+(`clientInfo`, sanitised, ≤ 64 characters) and the cleaned `User-Agent` product token. Self-reported values are for
+display ("reported as"), never for decisions. During `tools/call` the context also names the tool (`toolName`), so
+listeners of your own write events can add it to their audit rows. `McpCallContext::fromAttribute()` reads it from a
+request attribute you already hold; `McpCallContext::fromRequest()` is deprecated since 1.1.
 
-## Using it from a DDD / hexagonal application
+Tools read the HTTP request, when they need it at all, through `McpToolCall::$http` / `McpResourceRead::$http`
+(`McpHttpRequest`); `$call->request` (HttpFoundation) is deprecated since 1.1 and removed in 2.0.
+
+## Standard Symfony host
+
+The zero-config path: no change for an existing 1.0 host.
+
+1. `composer require nowo-tech/mcp-kit-bundle`, a stateless firewall on the endpoint (see [INSTALLATION](INSTALLATION.md)).
+2. Implement `McpRequestAuthenticatorInterface` (or keep a 1.0 `McpAuthenticatorInterface`: it still works and only
+   adds a deprecation in debug mode) and set `hooks.authenticator`; add the rate limiter and authorizer hooks.
+3. Register tools as services (autoconfigured). Inside a tool, use `$call->principal`, `$call->arguments`,
+   `$call->context` and, if you must, `$call->http`.
+4. Listen to `McpToolCallEvent` for the audit.
+
+Your tools may call Symfony services, Doctrine repositories and your controllers' handlers directly: the bundle does
+not require any layering.
+
+## DDD host
+
+### Using it from a DDD / hexagonal application
 
 McpKit is an **inbound infrastructure adapter**: an MCP transport, like a controller layer. It has no entities, no
 persistence and no Doctrine dependency, and it stores no tokens. Your domain never needs to know it exists.
@@ -293,10 +334,10 @@ persistence and no Doctrine dependency, and it stores no tokens. Your domain nev
 
 | MCP piece | Your hexagon |
 | --- | --- |
-| `McpAuthenticatorInterface` | infrastructure: looks the bearer token up through your token repository port and builds an `McpPrincipal` |
+| `McpRequestAuthenticatorInterface` | infrastructure: reads `McpHttpRequest::credential()`, looks the token up through your token repository port and builds an `McpPrincipal` |
 | `McpPrincipal::$grants` / `$hostContext` | your access scope (opaque strings / one value object of yours) |
 | `McpToolAuthorizerInterface` | infrastructure: maps `requires` and `grants` to your authorization rules |
-| `McpRateLimiterInterface`, `McpAvailabilityInterface` | infrastructure adapters over your limiter / maintenance state |
+| `McpRateLimiterInterface`, `McpRequestAvailabilityInterface` | infrastructure adapters over your limiter / maintenance state |
 | `McpToolInterface`, `McpResourceTemplateInterface` | thin adapters: arguments → command/query → array |
 | `McpToolCallEvent` listener | bridge to your audit port (write tools refuse with `AUDIT_001` without one) |
 
@@ -331,8 +372,11 @@ final readonly class TaskGetTool implements McpToolInterface
 }
 ```
 
-Keep MCP types (`McpToolCall`, `McpToolResult`, `McpToolError`, `McpUntrusted`) and `$call->request` inside the
-adapter; pass only your own commands and value objects inward.
+Keep MCP types (`McpToolCall`, `McpToolResult`, `McpToolError`, `McpUntrusted`, `McpHttpRequest`) inside the
+adapter; pass only your own commands and value objects inward. Since 1.1 no host-facing port, event or value object
+needs an HttpFoundation, Security or Doctrine type: implement the `McpRequest*` ports and read `$call->http` (the
+deprecated `Request`-typed members stay until 2.0 for standard hosts). `tests/Integration/Kernel/DddHostKernelTest.php`
+boots such a host.
 
 **Audit bridge**
 
