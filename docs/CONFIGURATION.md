@@ -31,10 +31,10 @@ nowo_mcp_kit:
     firewall_check: true        # 500 unless the firewall user is the principal's user behind a secured, stateless firewall
                                 # false: tests only, refused unless kernel.debug is true
     hooks:
-        authenticator: ~        # McpAuthenticatorInterface service id: required when enabled
+        authenticator: ~        # McpRequestAuthenticatorInterface service id: required when enabled
         authorizer: ~           # McpToolAuthorizerInterface: default allows no tool
         rate_limiter: ~         # McpRateLimiterInterface: default refuses every request (429)
-        availability: ~         # McpAvailabilityInterface: default always available
+        availability: ~         # McpRequestAvailabilityInterface: default always available
 ```
 
 ## Table of contents
@@ -59,10 +59,10 @@ prefix.
 
 | `hooks.*` | Interface | Without it |
 | --- | --- | --- |
-| `authenticator` | `Security\McpAuthenticatorInterface`: a `McpPrincipal` per request, or `McpAuthFailure::Invalid` (401) / `Disabled` (404) | The container does not build |
+| `authenticator` | `Security\McpRequestAuthenticatorInterface` (or the deprecated `McpAuthenticatorInterface`): a `McpPrincipal` per request, or `McpAuthFailure::Invalid` (401) / `Disabled` (404) | The container does not build |
 | `authorizer` | `Security\McpToolAuthorizerInterface`: which tools a principal may list and call (levels and ticks only) | No tool listed; every call `TOKEN_001` |
 | `rate_limiter` | `Security\McpRateLimiterInterface`: token budget, write budget, failed tokens per IP | Every request 429 |
-| `availability` | `Security\McpAvailabilityInterface`: `Available`, `Disabled` (404) or `Maintenance` (503) | Always available |
+| `availability` | `Security\McpRequestAvailabilityInterface` (or the deprecated `McpAvailabilityInterface`): `Available`, `Disabled` (404) or `Maintenance` (503) | Always available |
 
 ## Firewall
 

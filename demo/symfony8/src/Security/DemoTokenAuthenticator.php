@@ -22,12 +22,12 @@ final class DemoTokenAuthenticator extends AbstractAuthenticator
 {
     public function supports(Request $request): bool
     {
-        return McpCredential::fromRequest($request) !== null;
+        return McpCredential::fromHeader($request->headers->get('Authorization')) !== null;
     }
 
     public function authenticate(Request $request): SelfValidatingPassport
     {
-        $token = DemoTokens::find(McpCredential::fromRequest($request));
+        $token = DemoTokens::find(McpCredential::fromHeader($request->headers->get('Authorization')));
         if ($token === null) {
             throw new AuthenticationException('Unknown token.');
         }

@@ -32,6 +32,6 @@ final readonly class McpCallContextProvider
     {
         $request = $this->requestStack->getMainRequest();
 
-        return $request instanceof Request ? McpCallContext::fromRequest($request) : null;
+        return $request instanceof Request ? McpCallContext::fromAttribute($request->attributes->get(McpCallContext::ATTRIBUTE)) : null;
     }
 }

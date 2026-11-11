@@ -1116,10 +1116,10 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     maintenance_retry_after?: int|Param, // Retry-After seconds of the 503 answered in maintenance. // Default: 60
  *     firewall_check?: bool|Param, // Refuse (500) when the firewall user is not the principal user or the firewall is not secured and stateless. False is for tests only and is refused unless kernel.debug is true. // Default: true
  *     hooks?: array{ // Service ids of the host hooks.
- *         authenticator?: scalar|Param|null, // McpAuthenticatorInterface; required when enabled. // Default: null
+ *         authenticator?: scalar|Param|null, // McpRequestAuthenticatorInterface (or the deprecated McpAuthenticatorInterface); required when enabled. // Default: null
  *         authorizer?: scalar|Param|null, // McpToolAuthorizerInterface; default: no tool allowed. // Default: null
  *         rate_limiter?: scalar|Param|null, // McpRateLimiterInterface; default: every request 429. // Default: null
- *         availability?: scalar|Param|null, // McpAvailabilityInterface; default: always available. // Default: null
+ *         availability?: scalar|Param|null, // McpRequestAvailabilityInterface (or the deprecated McpAvailabilityInterface); default: always available. // Default: null
  *     },
  * }
  * @psalm-type TwigExtraConfig = array{

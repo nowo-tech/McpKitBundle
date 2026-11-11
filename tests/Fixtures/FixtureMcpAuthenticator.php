@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\User\InMemoryUser;
 
 /**
- * Test authenticator: throwaway tokens only.
+ * Test authenticator on the deprecated HttpFoundation port: throwaway tokens only.
  */
 final class FixtureMcpAuthenticator implements McpAuthenticatorInterface
 {
@@ -22,7 +22,15 @@ final class FixtureMcpAuthenticator implements McpAuthenticatorInterface
 
     public function authenticate(Request $request): McpPrincipal|McpAuthFailure
     {
-        return match (McpCredential::fromRequest($request)) {
+        return self::answer(McpCredential::fromHeader($request->headers->get('Authorization')));
+    }
+
+    /**
+     * The answer for a credential, shared by the deprecated port and its {@see FixtureRequestAuthenticator} twin.
+     */
+    public static function answer(?string $credential): McpPrincipal|McpAuthFailure
+    {
+        return match ($credential) {
             'tok-ada'   => new McpPrincipal(new InMemoryUser('ada', ''), 'id-ada', 'Ada read', false, ['demo' => 'read']),
             'tok-grace' => new McpPrincipal(new InMemoryUser('grace', ''), 'id-grace', 'Grace full', true, ['demo' => 'full']),
             // The firewall says "ada" but the hook says "grace": the bundle must refuse.

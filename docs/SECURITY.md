@@ -42,7 +42,14 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - Schemas resolve only local `$defs`; nothing is fetched.
 - A committed write whose result cannot be shown answers the error result `SAVED_001` with its ids and a fixed "saved,
   do not repeat" text, so an agent is told not to repeat it (error results are exempt from the output schema).
-- Tools receive the whole `Request` (through `McpToolCall`); they must not read credentials from it.
+- Tools receive the request as `McpHttpRequest` (`$call->http`; the HttpFoundation `$call->request` is deprecated);
+  they must not read credentials from it. Since 1.1 the hooks receive the same `McpHttpRequest`. Redaction is an
+  allowlist: only `Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`, `X-Forwarded-For` / `-Proto` / `-Host` / `-Port` / `-Prefix` and
+  `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` are shown in clear; the raw values of all other headers are kept out of the
+  object's properties (an internal `WeakMap` keyed by the object, collected with it), so VarDumper / the profiler,
+  `var_export()`, `print_r()`, `(array)`, `json_encode()` and `serialize()` never write the token. It never carries the
+  body. Building it never fails on conflicting `Forwarded` / `X-Forwarded-For` headers (`clientIp` is then null), so
+  the early refusals (404, 403, 405, 503) answer as before.
 - A tool declared `ReadOnly` that writes skips the audit gate and the write budget: the kit cannot detect it, so host
   review must.
 

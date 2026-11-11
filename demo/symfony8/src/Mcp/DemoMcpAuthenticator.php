@@ -4,25 +4,24 @@ declare(strict_types=1);
 
 namespace App\Mcp;
 
-use Nowo\McpKitBundle\Security\McpAuthenticatorInterface;
+use Nowo\McpKitBundle\Http\McpHttpRequest;
 use Nowo\McpKitBundle\Security\McpAuthFailure;
-use Nowo\McpKitBundle\Security\McpCredential;
 use Nowo\McpKitBundle\Security\McpPrincipal;
-use Symfony\Component\HttpFoundation\Request;
+use Nowo\McpKitBundle\Security\McpRequestAuthenticatorInterface;
 
 /**
  * The bundle's authenticator hook: the same demo tokens as the firewall, answered as a principal for this request.
  */
-final readonly class DemoMcpAuthenticator implements McpAuthenticatorInterface
+final readonly class DemoMcpAuthenticator implements McpRequestAuthenticatorInterface
 {
     public function __construct(
         private DemoUserProvider $users,
     ) {
     }
 
-    public function authenticate(Request $request): McpPrincipal|McpAuthFailure
+    public function authenticateRequest(McpHttpRequest $request): McpPrincipal|McpAuthFailure
     {
-        $credential = McpCredential::fromRequest($request);
+        $credential = $request->credential();
         $token      = DemoTokens::find($credential);
         if ($token === null) {
             return McpAuthFailure::Invalid;

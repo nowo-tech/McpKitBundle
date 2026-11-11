@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Nowo\McpKitBundle\Context;
 
 use Nowo\McpKitBundle\Protocol\McpEra;
+use Nowo\McpKitBundle\Tool\McpToolCall;
 use Symfony\Component\HttpFoundation\Request;
 
 use function is_string;
 use function preg_match;
 use function substr;
+use function trigger_error;
+
+use const E_USER_DEPRECATED;
 
 /**
  * What the host may know about the MCP call in progress: era, protocol version, the client as reported, and the tool.
@@ -44,12 +48,27 @@ final readonly class McpCallContext
      * @param Request $request the request
      *
      * @return self|null the context
+     *
+     * @deprecated since 1.1.0, use {@see McpCallContextProvider::current()}, {@see fromAttribute()} or the context of
+     *             the call ({@see McpToolCall::$context}); removed in 2.0.0
      */
     public static function fromRequest(Request $request): ?self
     {
-        $context = $request->attributes->get(self::ATTRIBUTE);
+        @trigger_error('Since nowo-tech/mcp-kit-bundle 1.1.0: McpCallContext::fromRequest() is deprecated, use McpCallContextProvider::current() or McpCallContext::fromAttribute() instead.', E_USER_DEPRECATED);
 
-        return $context instanceof self ? $context : null;
+        return self::fromAttribute($request->attributes->get(self::ATTRIBUTE));
+    }
+
+    /**
+     * The context stored under {@see ATTRIBUTE}, from a value the host read from its own request attributes.
+     *
+     * @param mixed $attribute the value of the {@see ATTRIBUTE} request attribute
+     *
+     * @return self|null the context, or null when the value is not one
+     */
+    public static function fromAttribute(mixed $attribute): ?self
+    {
+        return $attribute instanceof self ? $attribute : null;
     }
 
     /**

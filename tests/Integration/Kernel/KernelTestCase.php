@@ -7,8 +7,12 @@ namespace Nowo\McpKitBundle\Tests\Integration\Kernel;
 use Closure;
 use Nowo\McpKitBundle\Protocol\McpProtocol;
 use Nowo\McpKitBundle\Tests\Fixtures\FixtureAvailability;
+use Nowo\McpKitBundle\Tests\Fixtures\FixtureDualAuthenticator;
+use Nowo\McpKitBundle\Tests\Fixtures\FixtureDualAvailability;
 use Nowo\McpKitBundle\Tests\Fixtures\FixtureMcpAuthenticator;
 use Nowo\McpKitBundle\Tests\Fixtures\FixtureRateLimiter;
+use Nowo\McpKitBundle\Tests\Fixtures\FixtureRequestAuthenticator;
+use Nowo\McpKitBundle\Tests\Fixtures\FixtureRequestAvailability;
 use Nowo\McpKitBundle\Tests\Fixtures\TestFirewallAuthenticator;
 use PHPUnit\Framework\TestCase;
 use stdClass;
@@ -75,7 +79,7 @@ abstract class KernelTestCase extends TestCase
                     $container->extension('security', $security);
                 }
                 $defaults = $container->services()->defaults()->autowire()->autoconfigure()->public();
-                foreach ([FixtureMcpAuthenticator::class, FixtureRateLimiter::class, FixtureAvailability::class, TestFirewallAuthenticator::class] as $class) {
+                foreach ([FixtureMcpAuthenticator::class, FixtureRequestAuthenticator::class, FixtureDualAuthenticator::class, FixtureRateLimiter::class, FixtureAvailability::class, FixtureRequestAvailability::class, FixtureDualAvailability::class, TestFirewallAuthenticator::class] as $class) {
                     $defaults->set($class, $class);
                 }
                 foreach ($services as $serviceId => $class) {

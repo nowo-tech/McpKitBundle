@@ -5,6 +5,37 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+Minor release (1.1.0): REQ-ARCH-001 rule 3. Every host-facing port, event and value object now has a variant without
+HttpFoundation types; the `Request`-typed ones are deprecated and stay until 2.0.0. Standard hosts need no change.
+
+### Added
+
+- `Http\McpHttpRequest`: framework-free view of the endpoint request (method, path, scheme, host, client IP after
+  `trusted_proxies`, headers; never the body), with `credential()` (same rules as before: `Authorization` only).
+  Redaction is an allowlist (`Accept*`, `Content-Type`, `Content-Length`, `Origin`, `User-Agent`, `Host`,
+  `X-Forwarded-For` / `-Proto` / `-Host` / `-Port` / `-Prefix`, `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` are
+  shown in clear; exact names, no prefixes); the raw values of every other header are kept
+  out of the object's properties (internal `WeakMap`), so VarDumper, `var_export()`, `print_r()`, `(array)`,
+  `json_encode()` and `serialize()` show `[redacted]`. Restored or cloned copies carry no credential. Conflicting
+  forwarding headers give `clientIp: null` instead of an exception, so the early refusals keep their status (audit
+  MN-M-L1, L2, L3, I1).
+- `Security\McpRequestAuthenticatorInterface::authenticateRequest(McpHttpRequest)` and
+  `Security\McpRequestAvailabilityInterface::availabilityOf(McpHttpRequest)`: twins of the two host hooks. When a
+  service implements both the old and the new port, the bundle calls the new one. Order of checks, deny-by-default,
+  token checks, budgets and answers are unchanged (old-vs-new equivalence test over 26 scenarios, including a dual
+  availability class, a trusted proxy and conflicting forwarding headers:
+  `tests/Integration/Kernel/HostPortEquivalenceTest.php`).
+- `McpToolCall::$http` / `McpResourceRead::$http` (`McpHttpRequest`), `McpCredential::fromHeader()`,
+  `McpCallContext::fromAttribute()`.
+- DDD-host kernel test (`tests/Integration/Kernel/DddHostKernelTest.php`); USAGE sections "Standard Symfony host" and
+  "DDD host".
+
+### Deprecated
+
+- `McpAuthenticatorInterface`, `McpAvailabilityInterface` (use the `McpRequest*` twins), `McpCredential::fromRequest()`,
+  `McpCallContext::fromRequest()`, `McpToolCall::$request`, `McpResourceRead::$request`, `AlwaysAvailable::state()`.
+  All are removed in 2.0.0; see [UPGRADING](UPGRADING.md#upgrading-to-110).
+
 ## [1.0.0] - 2026-11-08
 
 First release: a stateless MCP Streamable HTTP server for Symfony (spec 219). Transport, tool and resource registries, host authentication hooks, limits and audit; the tools stay in the host. Independent audit: Appendix IH, Pass / Info.

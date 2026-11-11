@@ -32,6 +32,7 @@ use stdClass;
 
 use function array_column;
 use function json_decode;
+use function json_encode;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -214,6 +215,12 @@ final class ToolsTest extends KernelTestCase
         $call = $this->service($kernel, NoteCreateTool::class)->calls[0];
         self::assertSame('k-1', $call->idempotencyKey());
         self::assertSame('note_create', McpCallContext::fromRequest($call->request)?->toolName);
+        self::assertSame('note_create', McpCallContext::fromAttribute($call->request->attributes->get(McpCallContext::ATTRIBUTE))?->toolName);
+        self::assertSame('POST', $call->http->method);
+        self::assertSame('/mcp', $call->http->path);
+        self::assertSame('203.0.113.9', $call->http->clientIp);
+        self::assertSame('tok-grace', $call->http->credential());
+        self::assertStringNotContainsString('tok-grace', (string) json_encode($call->http));
         self::assertSame(['title'], $this->events($kernel)[0]->changedFields);
         self::assertSame('Invalid field: idempotency_key', $this->errorBody($this->callTool($kernel, 'note_create', ['title' => 'x', 'idempotency_key' => 'bad key']))['err']);
     }
