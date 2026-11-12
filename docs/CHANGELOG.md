@@ -5,6 +5,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Demo uses the UiKit base style (REQ-DEMO-014)
+
 ## [1.1.0] - 2026-11-11
 
 Minor release (1.1.0): REQ-ARCH-001 rule 3. Every host-facing port, event and value object now has a variant without
