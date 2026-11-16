@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/mcp-kit-bundle`  
-**Last audited**: 2026-11-08
+**Last audited**: 2026-11-16 (sweep: 2026-11-08 baseline + later sources)
 
 Scope: every file under `src/` plus the shipped route imports under `config/routes/`.
 
@@ -99,3 +99,15 @@ Scope: every file under `src/` plus the shipped route imports under `config/rout
 | `src/Paging/McpCursor.php` | Paging | FR-PAGE-001 |
 | `src/Paging/McpCursorSigner.php` | Paging | FR-PAGE-001 |
 | `src/Paging/McpLimits.php` | Paging | FR-PAGE-001 |
+
+## Sources added after the last baseline review (sweep 2026-11-16)
+
+These 5 `src/` files were added by releases after the last review. Each row maps the file to the requirement already used for its neighbours in the same directory; the description comes from the class docblock. With them, every file under `src/` is listed in this inventory.
+
+| Source file | Spec section | Requirement IDs |
+| --- | --- | --- |
+| `src/Http/McpHttpRequest.php` | Transport: Framework-free view of the HTTP request that reached the MCP endpoint, for the host's authenticator and availability ... | FR-PROTO-001 |
+| `src/Http/McpHttpRequestFactory.php` | Transport: Builds the framework-free McpHttpRequest from the HttpFoundation request. | FR-PROTO-001 |
+| `src/Http/McpHttpRequestSecrets.php` | Transport: Holds the raw values of the sensitive headers of each McpHttpRequest outside the object, so no dump of the object (Va... | FR-PROTO-001 |
+| `src/Security/McpRequestAuthenticatorInterface.php` | Security hooks: The host's token check, required with `enabled: true` (the bundle stores no tokens). | FR-SEC-001 |
+| `src/Security/McpRequestAvailabilityInterface.php` | Security hooks: The host's switches (an instance setting that turns MCP off, maintenance), with a framework-free view of the request. | FR-SEC-001 |

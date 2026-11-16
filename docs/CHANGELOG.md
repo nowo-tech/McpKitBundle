@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 
 - Demo uses the UiKit base style (REQ-DEMO-014)
+- Spec Kit baseline: user scenarios added to `specs/001-baseline/spec.md` and the five `src/` files added in 1.1.0 mapped in `code-inventory.md` (REQ-SPECKIT-001 / REQ-SPECKIT-003)
+- Installation: the Flex recipe and the two files it copies are documented (REQ-RECIPE-001)
 
 ## [1.1.0] - 2026-11-11
 

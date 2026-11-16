@@ -19,6 +19,53 @@ HTTP, JSON only), protocol versions (modern 2026-07-28, legacy 2025-11-25 and 20
 host hooks for authentication, authorization, budgets and availability, a compiled tool registry with JSON Schema
 validation, the untrusted envelope, size caps and an audit event. The host registers the tools.
 
+## User Scenarios & Testing
+
+### User story 1 - Expose host tools to an MCP client (Priority: P1)
+
+As a host developer, I register my own tools and turn the endpoint on, so an MCP client (an IDE agent, a chat
+assistant) can discover and call them over stateless Streamable HTTP.
+
+**Acceptance scenarios**
+
+1. **Given** `enabled: true`, an authenticator hook and a tagged tool, **when** a modern client sends `tools/list`,
+   **then** the answer lists the tool with its JSON Schema and caching hints (FR-PROTO-004, FR-TOOL-*).
+2. **Given** the same setup, **when** the client calls the tool with arguments that fail its input schema, **then**
+   the call is refused with a JSON-RPC error and the tool code never runs.
+3. **Given** `enabled: false`, **when** anything requests the configured path, **then** no route answers
+   (FR-CFG-001, FR-ROUTE-001).
+
+### User story 2 - Keep unauthenticated and abusive callers out (Priority: P1)
+
+As a host operator, I want every request authenticated by my own token check and bounded by budgets, so a leaked
+URL or a noisy client cannot run tools or exhaust the server.
+
+**Acceptance scenarios**
+
+1. **Given** a request without a valid token, **when** it reaches the endpoint, **then** it is refused before the
+   body is parsed and the failure counts against the caller IP (FR-HTTP-002, FR-SEC-001).
+2. **Given** a caller over its token budget, **when** it sends another request, **then** it gets 429 `-31001` with
+   `Retry-After` (FR-SEC-003).
+3. **Given** a foreign `Origin`, a wrong `Content-Type` or an oversized body, **then** the endpoint answers 403,
+   415 or 413 (FR-HTTP-003).
+
+### User story 3 - Older clients keep working (Priority: P2)
+
+As an integrator with a client that only speaks a legacy protocol version, I can still `initialize`, `ping` and call
+tools without a session (FR-PROTO-002).
+
+### User story 4 - Switch MCP off at runtime (Priority: P2)
+
+As an operator, I can turn the endpoint off through my availability hook (an instance setting, maintenance) and
+clients get a retryable refusal instead of a broken call (FR-SEC-*, `maintenance_retry_after`).
+
+### Edge cases
+
+- Notifications answer 202 with no body (FR-HTTP-004); unknown methods answer `-32601` (FR-PROTO-004).
+- Header and body disagree on `Mcp-Method` / `Mcp-Name`: refused (FR-PROTO-003).
+- The kernel is kept alive in FrankenPHP worker mode with reset false: no request data survives between requests
+  (`tests/Integration/Kernel/WorkerModeTest.php`).
+
 ## Requirements
 
 ### Bundle and DI
