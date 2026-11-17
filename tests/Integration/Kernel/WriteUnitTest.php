@@ -26,6 +26,9 @@ use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
 
 use function array_map;
+use function json_decode;
+
+use const JSON_THROW_ON_ERROR;
 
 /**
  * Option `write_unit.enabled` with transaction-doctrine's real WriteUnit: write tools are replayed inside the invoker,
@@ -100,6 +103,8 @@ final class WriteUnitTest extends KernelTestCase
         self::assertCount(1, $events);
         self::assertSame(McpCallOutcome::Ok, $events[0]->outcome);
         self::assertSame(['note' => 'n-1'], $events[0]->auditIds);
+        self::assertSame(2, $events[0]->attempts);
+        self::assertTrue($events[0]->replayed);
         self::assertSame(1, $this->unit($kernel)->units);
     }
 
@@ -114,7 +119,7 @@ final class WriteUnitTest extends KernelTestCase
         $error = $this->json($response)['error'];
         self::assertSame(McpProtocol::WRITE_CONFLICT, $error['code']);
         self::assertSame('Write conflict; retry later', $error['message']);
-        self::assertSame(['code' => 'CONFLICT_001', 'retry_after' => 1, 'committed' => false], $error['data']);
+        self::assertSame(['code' => 'CONFLICT_001', 'retry_after' => 1], $error['data']);
         self::assertSame([1, 2, 3], $this->attempts($kernel));
 
         self::assertSame(['note_lock'], $this->service($kernel, FixtureRateLimiter::class)->writes);
@@ -122,6 +127,8 @@ final class WriteUnitTest extends KernelTestCase
         self::assertCount(1, $events);
         self::assertSame(McpCallOutcome::Conflict, $events[0]->outcome);
         self::assertSame('CONFLICT_001', $events[0]->ecode);
+        self::assertSame(3, $events[0]->attempts);
+        self::assertTrue($events[0]->replayed);
     }
 
     #[Test]
@@ -135,22 +142,25 @@ final class WriteUnitTest extends KernelTestCase
     }
 
     #[Test]
-    public function aCommittedThenConflictCaseAnswersConflict002WithoutRetry(): void
+    public function aCommittedThenConflictCaseAnswersTheSavedToolResultConflict002(): void
     {
         $kernel   = $this->boot();
         $response = $this->lock($kernel, 'committed');
 
-        self::assertSame(409, $response->getStatusCode());
+        // Never a protocol error: SDK clients may auto-retry those (audit IH-L2, SZ-L1).
+        self::assertSame(200, $response->getStatusCode());
         self::assertFalse($response->headers->has('Retry-After'));
-        $error = $this->json($response)['error'];
-        self::assertSame(McpProtocol::WRITE_CONFLICT, $error['code']);
-        self::assertSame(['code' => 'CONFLICT_002', 'committed' => true], $error['data']);
+        $result = $this->json($response)['result'];
+        self::assertTrue($result['isError']);
+        self::assertSame(['ECODE' => 'CONFLICT_002', 'err' => McpToolInvoker::CONFLICT_SAVED_TEXT, 'saved' => true], json_decode($result['content'][0]['text'], true, 512, JSON_THROW_ON_ERROR));
         self::assertSame([1], $this->attempts($kernel), 'a unit that already committed is never replayed');
 
         $events = $this->service($kernel, AuditRecorder::class)->events;
         self::assertCount(1, $events);
         self::assertSame(McpCallOutcome::Conflict, $events[0]->outcome);
         self::assertSame('CONFLICT_002', $events[0]->ecode);
+        self::assertSame(1, $events[0]->attempts);
+        self::assertFalse($events[0]->replayed);
     }
 
     #[Test]

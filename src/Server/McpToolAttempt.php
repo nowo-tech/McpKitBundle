@@ -12,14 +12,17 @@ use Nowo\McpKitBundle\Tool\McpToolResult;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * One write tool call as the write runner's work: each attempt gets a fresh {@see McpToolCall} built from the call's
- * immutable inputs, and the context attribute is set again, so a replay never sees what a failed attempt built or
- * changed (no dependency on transaction-doctrine's reset hooks). Built per call, never kept on a service.
+ * One tool call as the work of the write runner (or a single direct run): each attempt gets a fresh {@see McpToolCall}
+ * and the context attribute is set again. McpKit's own call data is rebuilt per attempt; the HTTP request, principal
+ * and host context are the same objects (no dependency on transaction-doctrine's reset hooks). Counts the attempts for
+ * the audit event. Built per call, never kept on a service.
  *
  * @internal
  */
-final readonly class McpToolAttempt
+final class McpToolAttempt
 {
+    private int $attempts = 0;
+
     /**
      * Creates the work of one call.
      *
@@ -30,11 +33,11 @@ final readonly class McpToolAttempt
      * @param Request $request the HTTP request
      */
     public function __construct(
-        private McpToolInterface $tool,
-        private McpPrincipal $principal,
-        private array $arguments,
-        private McpCallContext $context,
-        private Request $request,
+        private readonly McpToolInterface $tool,
+        private readonly McpPrincipal $principal,
+        private readonly array $arguments,
+        private readonly McpCallContext $context,
+        private readonly Request $request,
     ) {
     }
 
@@ -47,8 +50,19 @@ final readonly class McpToolAttempt
      */
     public function __invoke(int $attempt): McpToolResult
     {
+        $this->attempts = $attempt; // @igor-ignore — a per-call object built by the invoker, never a service
         $this->request->attributes->set(McpCallContext::ATTRIBUTE, $this->context);
 
         return $this->tool->call(new McpToolCall($this->principal, $this->arguments, $this->context, $this->request, null, $attempt));
+    }
+
+    /**
+     * How many times the tool ran so far (the last attempt number).
+     *
+     * @return int 0 before the first attempt
+     */
+    public function attempts(): int
+    {
+        return $this->attempts;
     }
 }

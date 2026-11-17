@@ -28,6 +28,8 @@ final class McpToolCallEvent extends Event
      * @param list<string> $changedFields names of changed fields
      * @param McpCallContext $context era, version, client as reported, User-Agent
      * @param int $durationMs duration in milliseconds
+     * @param int $attempts times the tool ran (0: refused before running; above 1: replayed by a write unit)
+     * @param bool $replayed whether a write unit replayed the tool after a lock conflict
      */
     public function __construct(
         public readonly McpPrincipal $principal,
@@ -39,6 +41,8 @@ final class McpToolCallEvent extends Event
         public readonly array $changedFields,
         public readonly McpCallContext $context,
         public readonly int $durationMs,
+        public readonly int $attempts = 0,
+        public readonly bool $replayed = false,
     ) {
     }
 }

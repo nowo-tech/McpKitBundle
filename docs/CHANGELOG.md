@@ -12,13 +12,20 @@ All notable changes to this project are documented here. The format follows
   transaction-doctrine's `WriteUnitInterface`, so a lock conflict replays the tool, not the request. Read-only tools are
   never wrapped. The checks, the write budget and the audit event stay outside the unit: one `consumeWrite` and one
   `McpToolCallEvent` per call, dispatched after the final outcome. When the retries run out the call answers JSON-RPC
-  `-31007` (`McpProtocol::WRITE_CONFLICT`) with transaction-doctrine's conflict status (409 by default) and
-  `error.data = {code: "CONFLICT_001", retry_after: n, committed: false}` plus `Retry-After`; when the failed attempt
-  had already committed (`ConcurrencyConflict::$committed`), `{code: "CONFLICT_002", committed: true}` with no retry
-  hint. Each attempt gets a fresh `McpToolCall` (new `$attempt`, 1-based); nothing of a failed attempt reaches the
-  replay, without depending on transaction-doctrine's reset hooks. New: `Write\McpWriteRunnerInterface`,
-  `Write\McpWriteConflict`, `Bridge\TransactionDoctrine\TransactionDoctrineWriteRunner`,
-  `JsonRpcError::writeConflict()`, `McpCallOutcome::Conflict`. Option off or package absent: unchanged (BC test)
+  `-31007` (`McpProtocol::WRITE_CONFLICT`) with transaction-doctrine's conflict status (409 by default),
+  `error.data = {code: "CONFLICT_001", retry_after: n}` and `Retry-After`; when the failed attempt had already
+  committed (`ConcurrencyConflict::$committed`), the `isError` tool result `CONFLICT_002` with a fixed "saved, do not
+  repeat; read it again" text and no retry hint, never a protocol error (audit IH-L2, SZ-L1). McpKit's own call data is
+  rebuilt per attempt (a new `McpToolCall` with `$attempt`); the HTTP request, principal and host context are the same
+  objects. New: `Write\McpWriteRunnerInterface`, `Write\McpWriteConflict`,
+  `Bridge\TransactionDoctrine\TransactionDoctrineWriteRunner`, `JsonRpcError::writeConflict()`,
+  `McpCallOutcome::Conflict`. Option off or package absent: unchanged (BC test)
+- Principal refresh before the audit event (audit SZ-M1): after a replay or any conflict (the write unit cleared the
+  entity managers, detaching `$user` and `$hostContext`), the invoker refreshes the principal through the new optional
+  hook `hooks.principal_refresher` (`Security\McpPrincipalRefresherInterface`), else the firewall's user provider
+  (`Security\UserProviderPrincipalRefresher`, `refreshUser()`). A failed refresh is logged and the event still goes
+  out with the original principal. Listeners must refer to the principal by id or rely on the refreshed principal
+- `McpToolCallEvent::$attempts` (times the tool ran) and `McpToolCallEvent::$replayed`
 - Demo: Playwright e2e (home page and a real `tools/list` call), `make test-e2e` / `make demo-screenshots` and one WebP screenshot in the README (REQ-DEMO-013)
 
 ### Changed

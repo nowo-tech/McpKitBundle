@@ -304,32 +304,44 @@ replayed, not the HTTP request. Read-only tools are never wrapped.
 - **Once per call, not per attempt:** the checks, the write budget (`consumeWrite`) and the audit event stay outside
   the unit. The audit event is dispatched once, **after the final outcome** (`ok`, `tool_error`, `conflict`, …), so a
   replayed call writes one audit row, and a failed attempt writes none. The listener therefore runs outside the tool's
-  transaction, as it always did (tools commit their own work before returning).
-- **Every attempt is fresh:** the tool gets a new `McpToolCall` per attempt, with `$call->attempt` (1-based). The
-  arguments, context and request view are rebuilt from the call's immutable inputs; McpKit keeps nothing of a failed
-  attempt, and does not depend on transaction-doctrine's reset hooks. A replay clears the entity managers: load what
-  you change inside the tool, by id. The principal's `$user` (the firewall user) and `$hostContext` are the host's
-  objects: read their ids, do not attach them to new entities after a replay.
+  transaction, as it always did (tools commit their own work before returning). The event carries `attempts` (times
+  the tool ran) and `replayed` (true after a replay).
+- **What is rebuilt per attempt:** McpKit's own call data is rebuilt per attempt (a new `McpToolCall` with
+  `$call->attempt`, 1-based, its arguments, context and request view); the HTTP request, principal and host context are
+  the same objects. McpKit does not depend on transaction-doctrine's reset hooks. A replay clears the entity managers:
+  load what you change inside the tool, by id, and do not attach `$call->principal->user` or `$hostContext` to new
+  entities after a replay.
+- **The principal is refreshed before the event.** transaction-doctrine clears the entity managers between attempts
+  and also before it gives up with `committed: true`, which detaches the principal's `$user` and `$hostContext`. After
+  any replay or conflict the invoker refreshes the principal before dispatching `McpToolCallEvent`: through the
+  `hooks.principal_refresher` service (`Security\McpPrincipalRefresherInterface`) when set, else through the firewall's
+  user provider (`refreshUser()`, when `$user` is a `UserInterface`). If the refresh fails, it is logged and the event
+  goes out with the original principal: it is never dropped. **`McpToolCallEvent` listeners must refer to the principal
+  by id** (`$event->principal->tokenId`, the user's identifier), or rely on the refreshed principal; a listener that
+  links a detached entity loses its row.
+- **The unit runs only once** when a transaction is already open or an entity manager has unsaved changes (it cannot
+  replay safely): authenticators and rate limiters that use Doctrine should flush or clear before the tool runs.
 - **The tool must be replayable** (transaction-doctrine's rule): it commits at most once, or is idempotent as a whole,
   and keeps side effects (mail, messages, HTTP calls) until after its commit.
-- **When retries run out**, the call answers a JSON-RPC error `-31007` with the status of transaction-doctrine's
-  `conflict_response` (409 by default, 503 if configured), on both eras:
+- **When retries run out** and nothing was committed, the call answers a JSON-RPC error `-31007` with the status of
+  transaction-doctrine's `conflict_response` (409 by default, 503 if configured), on both eras:
 
   ```json
   {"jsonrpc": "2.0", "id": 1, "error": {"code": -31007, "message": "Write conflict; retry later",
-   "data": {"code": "CONFLICT_001", "retry_after": 1, "committed": false}}}
+   "data": {"code": "CONFLICT_001", "retry_after": 1}}}
   ```
 
-  plus `Retry-After: 1`. When the failed attempt had already committed part of its writes
-  (`ConcurrencyConflict::$committed`, transaction-doctrine's `commit_detection`), the unit is not replayed and the
-  answer carries no retry hint, because a blind retry could repeat the committed part:
+  plus `Retry-After: 1`.
+- **When the failed attempt had already committed** part of its writes (`ConcurrencyConflict::$committed`,
+  transaction-doctrine's `commit_detection`), the unit is not replayed and the answer is **not** a protocol error (SDK
+  clients may auto-retry those, audit IH-L2): it is the error result
 
   ```json
-  {"error": {"code": -31007, "message": "Write conflict; part of the change may be saved, read it again before retrying",
-   "data": {"code": "CONFLICT_002", "committed": true}}}
+  {"content": [{"type": "text", "text": "{\"ECODE\":\"CONFLICT_002\",\"err\":\"Part of the change was saved before a database conflict stopped it. Do not repeat this call; read the item again before deciding what to change.\",\"saved\":true}"}],
+   "isError": true}
   ```
 
-  The audit event has outcome `conflict` with `ECODE` `CONFLICT_001` / `CONFLICT_002`.
+  with no retry hint. The audit event has outcome `conflict` with `ECODE` `CONFLICT_001` / `CONFLICT_002`.
 - **Do not wrap the MCP route** in transaction-doctrine's `controller_routes` or `#[AsWriteUnit]`: the invoker answers
   conflicts itself, and a request-level replay would consume the budget and audit twice.
 - Option off, or transaction-doctrine absent: tools run once, exactly as in 1.1 (a database failure is `-32603`).
@@ -339,8 +351,9 @@ replayed, not the HTTP request. Read-only tools are never wrapped.
 
 `Event\McpToolCallEvent` (`McpKitEvents::TOOL_CALL`) is dispatched after every call that reaches the registry, refusals
 included: principal (no secret), tool name and kind, outcome (`ok`, `saved_without_result`, `tool_error`, `refused`,
-`invalid_input`, `rate_limited`, `conflict`, `internal_error`), `ECODE`, audit ids and changed field names, call context, duration. Never arguments, results or
-text. A listener that throws is logged and does not change the answer: the call happened.
+`invalid_input`, `rate_limited`, `conflict`, `internal_error`), `ECODE`, audit ids and changed field names, call context, duration,
+`attempts` (times the tool ran; 0 when refused before running and for resource reads) and `replayed`. Never arguments,
+results or text. A listener that throws is logged and does not change the answer: the call happened.
 
 ## Call context
 

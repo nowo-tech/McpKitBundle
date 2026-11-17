@@ -54,6 +54,7 @@
         "symfony/security-core": "^7.4 || ^8.0"
     },
     "require-dev": {
+        "doctrine/orm": "^3.3",
         "doctrine/persistence": "^4.0",
         "friendsofphp/php-cs-fixer": "^3.0",
         "igor-php/igor-php": "^0.10.1",

@@ -18,8 +18,16 @@ To run write tools as write units (recommended with nowo-tech/transaction-doctri
    the tool itself, and a route-level unit would never see the conflict.
 4. Check that each additive or destructive tool is replayable: it loads what it changes by id, commits at most once and
    sends side effects after its commit. `McpToolCall::$attempt` tells a tool which attempt it is on.
-5. If you `match` exhaustively on `McpCallOutcome`, add the new `Conflict` case (`conflict`); clients may now receive
-   the JSON-RPC error `-31007` (`McpProtocol::WRITE_CONFLICT`) with `data.code` `CONFLICT_001` or `CONFLICT_002`.
+5. Make `McpToolCallEvent` listeners refer to the principal by id (`tokenId`, the user's identifier) or rely on the
+   refreshed principal: after a replay or a conflict the entity managers were cleared, and the invoker refreshes the
+   principal through the firewall's user provider before the event. If `$user` or `$hostContext` is not reloadable
+   that way, set `hooks.principal_refresher` (`McpPrincipalRefresherInterface`). The event has new `attempts` and
+   `replayed` properties.
+6. If you `match` exhaustively on `McpCallOutcome`, add the new `Conflict` case (`conflict`). Clients may now receive
+   the JSON-RPC error `-31007` (`McpProtocol::WRITE_CONFLICT`, `data.code` `CONFLICT_001`, retryable) or the error
+   result `CONFLICT_002` (part of the write saved; do not repeat).
+7. Authenticators and rate limiters that use Doctrine should flush or clear: with a transaction open or unsaved changes
+   the unit runs only once.
 
 ## Upgrading to 1.1.0
 

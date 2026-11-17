@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\McpKitBundle\Tests\Fixtures\Tool;
 
-use Nowo\McpKitBundle\Tests\Fixtures\WriteUnit\FixtureWriteUnit;
+use Nowo\McpKitBundle\Tests\Fixtures\WriteUnit\LedgerWriteUnit;
 use Nowo\McpKitBundle\Tool\McpToolCall;
 use Nowo\McpKitBundle\Tool\McpToolDefinition;
 use Nowo\McpKitBundle\Tool\McpToolInterface;
@@ -49,8 +49,8 @@ final class LockingWriteTool implements McpToolInterface
     {
         $this->calls[] = $call;
         $mode          = $call->arguments['mode'];
-        if ($mode === 'committed' && $this->writeUnit instanceof FixtureWriteUnit) {
-            $this->writeUnit->ledger->record();
+        if ($mode === 'committed' && $this->writeUnit instanceof LedgerWriteUnit) {
+            $this->writeUnit->ledger()->record();
         }
         if ($mode !== 'once' || $call->attempt === 1) {
             $deadlock            = new PDOException('SQLSTATE[40001]: Serialization failure: 1213 Deadlock found');

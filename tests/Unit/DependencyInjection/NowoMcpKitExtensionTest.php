@@ -10,6 +10,7 @@ use Nowo\McpKitBundle\DependencyInjection\NowoMcpKitExtension;
 use Nowo\McpKitBundle\Http\McpEndpointController;
 use Nowo\McpKitBundle\Http\McpEndpointOptions;
 use Nowo\McpKitBundle\Routing\McpRouteLoader;
+use Nowo\McpKitBundle\Security\UserProviderPrincipalRefresher;
 use Nowo\McpKitBundle\Server\McpToolInvoker;
 use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
 use Nowo\TransactionDoctrine\WriteUnit\WriteUnitInterface;
@@ -123,6 +124,8 @@ final class NowoMcpKitExtensionTest extends TestCase
 
         self::assertFalse($container->hasDefinition(TransactionDoctrineWriteRunner::class));
         self::assertNull($container->getDefinition(McpToolInvoker::class)->getArgument(8));
+        self::assertNull($container->getDefinition(McpToolInvoker::class)->getArgument(9));
+        self::assertFalse($container->hasDefinition(UserProviderPrincipalRefresher::class));
     }
 
     #[Test]
@@ -143,6 +146,24 @@ final class NowoMcpKitExtensionTest extends TestCase
         $argument = $container->getDefinition(McpToolInvoker::class)->getArgument(8);
         self::assertInstanceOf(Reference::class, $argument);
         self::assertSame(TransactionDoctrineWriteRunner::class, (string) $argument);
+
+        $refresher = $container->getDefinition(McpToolInvoker::class)->getArgument(9);
+        self::assertInstanceOf(Reference::class, $refresher);
+        self::assertSame(UserProviderPrincipalRefresher::class, (string) $refresher);
+        $provider = $container->getDefinition(UserProviderPrincipalRefresher::class)->getArgument(0);
+        self::assertInstanceOf(Reference::class, $provider);
+        self::assertSame('security.user_providers', (string) $provider);
+        self::assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $provider->getInvalidBehavior());
+    }
+
+    #[Test]
+    public function theHostPrincipalRefresherWins(): void
+    {
+        $container = new ContainerBuilder();
+        (new NowoMcpKitExtension())->load([['enabled' => true, 'hooks' => ['authenticator' => 'app.auth', 'principal_refresher' => 'app.refresher'], 'write_unit' => ['enabled' => true]]], $container);
+
+        self::assertFalse($container->hasDefinition(UserProviderPrincipalRefresher::class));
+        self::assertSame('app.refresher', (string) $container->getDefinition(McpToolInvoker::class)->getArgument(9));
     }
 
     #[Test]

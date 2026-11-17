@@ -18,6 +18,7 @@ use Nowo\McpKitBundle\Security\AlwaysAvailable;
 use Nowo\McpKitBundle\Security\DenyingMcpRateLimiter;
 use Nowo\McpKitBundle\Security\DenyingMcpToolAuthorizer;
 use Nowo\McpKitBundle\Security\McpFirewallGuard;
+use Nowo\McpKitBundle\Security\UserProviderPrincipalRefresher;
 use Nowo\McpKitBundle\Server\McpDispatcher;
 use Nowo\McpKitBundle\Server\McpResourceReader;
 use Nowo\McpKitBundle\Server\McpServerInfo;
@@ -67,7 +68,7 @@ final class NowoMcpKitExtension extends Extension
      */
     public function load(array $configs, ContainerBuilder $container): void
     {
-        /** @var array{enabled: bool, path: string, server_info: array{name: string, title: string|null, version: string}, allowed_origins: list<string>, legacy: array{enabled: bool, versions: list<string>}, cache: array{discover_ttl_ms: int, tools_list_ttl_ms: int, templates_list_ttl_ms: int, resources_list_ttl_ms: int}, limits: array{max_body_bytes: int, max_json_depth: int, max_text_chars: int, max_list_rows: int, max_result_bytes: int, slow_call_ms: int}, maintenance_retry_after: int, firewall_check: bool, write_unit: array{enabled: bool}, hooks: array{authenticator: string|null, authorizer: string|null, rate_limiter: string|null, availability: string|null}} $config */
+        /** @var array{enabled: bool, path: string, server_info: array{name: string, title: string|null, version: string}, allowed_origins: list<string>, legacy: array{enabled: bool, versions: list<string>}, cache: array{discover_ttl_ms: int, tools_list_ttl_ms: int, templates_list_ttl_ms: int, resources_list_ttl_ms: int}, limits: array{max_body_bytes: int, max_json_depth: int, max_text_chars: int, max_list_rows: int, max_result_bytes: int, slow_call_ms: int}, maintenance_retry_after: int, firewall_check: bool, write_unit: array{enabled: bool}, hooks: array{authenticator: string|null, authorizer: string|null, rate_limiter: string|null, availability: string|null, principal_refresher: string|null}} $config */
         $config = $this->processConfiguration(new Configuration(), $configs);
 
         $container->setParameter('nowo_mcp_kit.enabled', $config['enabled']);
@@ -113,7 +114,8 @@ final class NowoMcpKitExtension extends Extension
             new Reference('security.helper', ContainerInterface::NULL_ON_INVALID_REFERENCE),
         ]);
 
-        $writeRunner = null;
+        $writeRunner        = null;
+        $principalRefresher = null;
         if ($config['write_unit']['enabled']) {
             $this->requireWriteUnit(WriteUnitInterface::class);
             $container->register(TransactionDoctrineWriteRunner::class, TransactionDoctrineWriteRunner::class)->setArguments([
@@ -121,6 +123,12 @@ final class NowoMcpKitExtension extends Extension
                 new Reference(ConflictResponsePolicy::class, ContainerInterface::NULL_ON_INVALID_REFERENCE),
             ]);
             $writeRunner = new Reference(TransactionDoctrineWriteRunner::class);
+            if ($config['hooks']['principal_refresher'] === null) {
+                $container->register(UserProviderPrincipalRefresher::class, UserProviderPrincipalRefresher::class)->setArguments([
+                    new Reference('security.user_providers', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+                ]);
+            }
+            $principalRefresher = new Reference($config['hooks']['principal_refresher'] ?? UserProviderPrincipalRefresher::class);
         }
 
         $container->registerForAutoconfiguration(McpToolInterface::class)->addTag(McpRegistryPass::TOOL_TAG);
@@ -136,6 +144,7 @@ final class NowoMcpKitExtension extends Extension
             $config['limits']['slow_call_ms'],
             new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
             $writeRunner,
+            $principalRefresher,
         ]);
 
         $container->registerForAutoconfiguration(McpResourceTemplateInterface::class)->addTag(McpRegistryPass::TEMPLATE_TAG);

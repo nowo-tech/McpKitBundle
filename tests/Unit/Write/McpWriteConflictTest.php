@@ -33,7 +33,7 @@ final class McpWriteConflictTest extends TestCase
         $error = JsonRpcError::writeConflict($conflict);
         self::assertSame(McpProtocol::WRITE_CONFLICT, $error->errorCode);
         self::assertSame(503, $error->status);
-        self::assertSame(['code' => 'CONFLICT_001', 'retry_after' => 4, 'committed' => false], $error->data);
+        self::assertSame(['code' => 'CONFLICT_001', 'retry_after' => 4], $error->data);
         self::assertSame(['Retry-After' => '4'], $error->headers);
         self::assertNull($error->legacyStatus);
     }
@@ -54,9 +54,5 @@ final class McpWriteConflictTest extends TestCase
         self::assertNull($conflict->retryAfterSeconds);
         self::assertSame('CONFLICT_002', $conflict->errorCode());
 
-        $error = JsonRpcError::writeConflict($conflict);
-        self::assertSame(409, $error->status);
-        self::assertSame(['code' => 'CONFLICT_002', 'committed' => true], $error->data);
-        self::assertSame([], $error->headers);
     }
 }

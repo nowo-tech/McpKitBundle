@@ -85,6 +85,8 @@ Scope: every file under `src/` plus the shipped route imports under `config/rout
 | `src/Write/McpWriteRunnerInterface.php` | Tools | FR-TOOL-005 |
 | `src/Write/McpWriteConflict.php` | Tools | FR-TOOL-005 |
 | `src/Bridge/TransactionDoctrine/TransactionDoctrineWriteRunner.php` | Tools | FR-TOOL-005 |
+| `src/Security/McpPrincipalRefresherInterface.php` | Tools | FR-TOOL-005, FR-AUDIT-001 |
+| `src/Security/UserProviderPrincipalRefresher.php` | Tools | FR-TOOL-005, FR-AUDIT-001 |
 | `src/Envelope/McpEnvelope.php` | Tools | FR-ENV-001 |
 | `src/Event/McpToolCallEvent.php` | Tools | FR-AUDIT-001 |
 | `src/Event/McpCallOutcome.php` | Tools | FR-AUDIT-001 |

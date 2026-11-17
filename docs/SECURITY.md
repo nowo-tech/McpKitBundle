@@ -40,11 +40,16 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - Destructive tools are hidden and refused without the principal's tick, whatever the authorizer says.
 - Writes need an audit listener and pass the write budget before the tool runs.
 - With `write_unit.enabled`, a lock conflict replays only the tool, inside the invoker: the write budget is consumed and
-  the audit event dispatched once per call, so a replay can neither spend a token's write budget twice nor hide a call
-  from the audit. A failed attempt is not audited on its own; the call's single event carries its final outcome
-  (`conflict` when the retries ran out). A conflict after a partial commit answers `CONFLICT_002` with no retry hint,
-  so clients are not invited to repeat a write that may be saved. The error carries no SQL, parameters or exception
-  text.
+  the audit event dispatched once per call, so a replay cannot spend a token's write budget twice. A failed attempt is
+  not audited on its own; the call's single event carries its final outcome (`conflict` when the retries ran out),
+  `attempts` and `replayed`. The write unit clears the entity managers between attempts and before a committed
+  conflict, which detaches the principal's `$user` and `$hostContext`: the invoker refreshes the principal before the
+  event (`hooks.principal_refresher`, else the firewall's user provider) and, if that fails, logs it and sends the
+  event with the original principal. An audit listener that links a detached entity would fail, and the bundle only
+  logs listener failures, so **audit listeners must refer to the principal by id** (or rely on the refreshed
+  principal) for every write to be audited (audit SZ-M1). A conflict after a partial commit answers the `isError`
+  result `CONFLICT_002` with a fixed "saved, do not repeat; read it again" text and no retry hint, never a protocol
+  error that SDK clients might retry (IH-L2, SZ-L1). Neither answer carries SQL, parameters or exception text.
 - Schemas resolve only local `$defs`; nothing is fetched.
 - A committed write whose result cannot be shown answers the error result `SAVED_001` with its ids and a fixed "saved,
   do not repeat" text, so an agent is told not to repeat it (error results are exempt from the output schema).

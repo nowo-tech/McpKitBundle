@@ -37,6 +37,7 @@ nowo_mcp_kit:
         authorizer: ~           # McpToolAuthorizerInterface: default allows no tool
         rate_limiter: ~         # McpRateLimiterInterface: default refuses every request (429)
         availability: ~         # McpRequestAvailabilityInterface: default always available
+        principal_refresher: ~  # McpPrincipalRefresherInterface (write_unit only): default the firewall user provider
 ```
 
 ## Table of contents

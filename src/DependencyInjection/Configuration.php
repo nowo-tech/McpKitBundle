@@ -132,6 +132,7 @@ final class Configuration implements ConfigurationInterface
                         ->scalarNode('authorizer')->info('McpToolAuthorizerInterface; default: no tool allowed.')->defaultNull()->end()
                         ->scalarNode('rate_limiter')->info('McpRateLimiterInterface; default: every request 429.')->defaultNull()->end()
                         ->scalarNode('availability')->info('McpRequestAvailabilityInterface (or the deprecated McpAvailabilityInterface); default: always available.')->defaultNull()->end()
+                        ->scalarNode('principal_refresher')->info('McpPrincipalRefresherInterface, used with write_unit.enabled after a replay or a conflict; default: the firewall user provider refreshUser().')->defaultNull()->end()
                     ->end()
                 ->end()
             ->end();

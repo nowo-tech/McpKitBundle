@@ -131,20 +131,19 @@ final class JsonRpcError extends RuntimeException
     }
 
     /**
-     * A write tool met a lock conflict after its write unit gave up: `-31007` with the policy's status (409 by default)
-     * on both eras. Retryable: `data = {code: CONFLICT_001, retry_after: n, committed: false}` and `Retry-After`.
-     * Committed: `data = {code: CONFLICT_002, committed: true}`, no retry hint (a blind retry could repeat the write).
+     * A write tool met a lock conflict after its write unit gave up, and nothing of it was committed: `-31007` with the
+     * policy's status (409 by default) on both eras, `data = {code: CONFLICT_001, retry_after: n}` and `Retry-After`.
+     * A conflict after a partial commit is never a protocol error: the invoker answers the `isError` result
+     * `CONFLICT_002` instead (audit SZ-L1).
      *
-     * @param McpWriteConflict $conflict the conflict
+     * @param McpWriteConflict $conflict the retryable conflict
      *
      * @return self the error
      */
     public static function writeConflict(McpWriteConflict $conflict): self
     {
-        if ($conflict->retryAfterSeconds === null) {
-            return new self(McpProtocol::WRITE_CONFLICT, 'Write conflict; part of the change may be saved, read it again before retrying', $conflict->status, ['code' => $conflict->errorCode(), 'committed' => $conflict->committed]);
-        }
+        $retryAfter = $conflict->retryAfterSeconds ?? McpWriteConflict::DEFAULT_RETRY_AFTER;
 
-        return new self(McpProtocol::WRITE_CONFLICT, 'Write conflict; retry later', $conflict->status, ['code' => $conflict->errorCode(), 'retry_after' => $conflict->retryAfterSeconds, 'committed' => false], ['Retry-After' => (string) $conflict->retryAfterSeconds]);
+        return new self(McpProtocol::WRITE_CONFLICT, 'Write conflict; retry later', $conflict->status, ['code' => McpWriteConflict::RETRYABLE_CODE, 'retry_after' => $retryAfter], ['Retry-After' => (string) $retryAfter]);
     }
 }
