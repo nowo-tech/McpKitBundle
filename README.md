@@ -12,6 +12,11 @@ This bundle is **FrankenPHP worker mode friendly**.
 
 Workers that do **not** reset the kernel between requests are supported too: services are readonly, the registry is compiled into the container, and per-request data lives on the request. See [docs/FRANKENPHP-WORKER-AUDIT.md](docs/FRANKENPHP-WORKER-AUDIT.md).
 
+<p align="center">
+  <img src="docs/images/demo/endpoint.webp" alt="MCP Kit demo: endpoint page with throwaway tokens, the claude mcp add command and a curl example" width="720" />
+  <br /><sub>Demo — client setup for the stateless MCP endpoint</sub>
+</p>
+
 ## Features
 
 - **Streamable HTTP, stateless:** one `POST` endpoint, JSON answers, no sessions, no SSE; `Mcp-Session-Id` is never issued.

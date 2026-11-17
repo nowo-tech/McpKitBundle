@@ -9,7 +9,7 @@ COMPOSE_BIN := $(shell $(DOCKER_BIN) compose version >/dev/null 2>&1 && echo "$(
 COMPOSE     := $(COMPOSE_BIN) -f $(COMPOSE_FILE)
 SERVICE_PHP := php
 
-.PHONY: help up down down-dev build shell install ensure-up test test-coverage test-coverage-100 coverage-check validate-phpdoc test-conformance coverage-php-percent cs-check cs-fix qa clean release-check release-check-demos demo-smoke composer-sync rector rector-dry phpstan igor update validate assets setup-hooks check-no-cursor-coauthor check-open-prs check-no-raw-html-form strip-cursor-coauthor-from-history
+.PHONY: help up down down-dev build shell install ensure-up test test-coverage test-coverage-100 coverage-check validate-phpdoc test-conformance coverage-php-percent cs-check cs-fix qa clean release-check release-check-demos demo-smoke composer-sync rector rector-dry phpstan igor update validate assets setup-hooks check-no-cursor-coauthor check-open-prs check-no-raw-html-form strip-cursor-coauthor-from-history test-e2e demo-screenshots
 
 help:
 	@echo "MCP Kit Bundle - Development Commands"
@@ -39,6 +39,8 @@ help:
 	@echo "  release-check Pre-release: ensure-up, co-author/open-PR/raw-form checks, composer-sync, cs-fix, cs-check, rector-dry, phpstan, validate-phpdoc, igor, test-coverage + 100% gate, demos (+ conformance)"
 	@echo "  check-no-raw-html-form No raw <form>/<input> in demo Twig (REQ-TWIG-005)"
 	@echo "  check-open-prs Fail if unresolved open GitHub PRs remain (REQ-REL-003)"
+	@echo "  test-e2e      Playwright e2e against demo/symfony8 (REQ-DEMO-013)"
+	@echo "  demo-screenshots Refresh README screenshots docs/images/demo/*.webp (REQ-DEMO-013)"
 	@echo "  demo-smoke    REQ-TEST-011: boot demo + HTTP 200 (make -C demo demo-smoke)"
 	@echo "  composer-sync Validate composer.json and align composer.lock (no install)"
 	@echo "  clean         Remove vendor and cache"
@@ -155,6 +157,13 @@ release-check:
 check-no-raw-html-form:
 	@chmod +x .scripts/check-no-raw-html-form.sh
 	@./.scripts/check-no-raw-html-form.sh
+
+# REQ-DEMO-013 - Playwright e2e + WebP README screenshots (demo/symfony8/e2e, Playwright Docker image)
+test-e2e:
+	@$(MAKE) -C demo/symfony8 test-e2e
+
+demo-screenshots:
+	@$(MAKE) -C demo/symfony8 demo-screenshots
 
 release-check-demos:
 	@if [ -f demo/Makefile ]; then $(MAKE) -C demo release-check; else echo "No demo/Makefile — skip release-check-demos"; fi
