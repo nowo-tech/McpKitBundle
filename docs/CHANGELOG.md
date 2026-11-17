@@ -5,6 +5,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Demo: Playwright e2e (home page and a real `tools/list` call), `make test-e2e` / `make demo-screenshots` and one WebP screenshot in the README (REQ-DEMO-013)
+
 ### Changed
 
 - Demo uses the UiKit base style (REQ-DEMO-014)
