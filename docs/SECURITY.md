@@ -39,6 +39,12 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
 - Arguments are validated against closed schemas (unknown arguments refused); outputs are validated before sending.
 - Destructive tools are hidden and refused without the principal's tick, whatever the authorizer says.
 - Writes need an audit listener and pass the write budget before the tool runs.
+- With `write_unit.enabled`, a lock conflict replays only the tool, inside the invoker: the write budget is consumed and
+  the audit event dispatched once per call, so a replay can neither spend a token's write budget twice nor hide a call
+  from the audit. A failed attempt is not audited on its own; the call's single event carries its final outcome
+  (`conflict` when the retries ran out). A conflict after a partial commit answers `CONFLICT_002` with no retry hint,
+  so clients are not invited to repeat a write that may be saved. The error carries no SQL, parameters or exception
+  text.
 - Schemas resolve only local `$defs`; nothing is fetched.
 - A committed write whose result cannot be shown answers the error result `SAVED_001` with its ids and a fixed "saved,
   do not repeat" text, so an agent is told not to repeat it (error results are exempt from the output schema).

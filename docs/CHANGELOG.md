@@ -7,6 +7,18 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Write tools run as write units inside the invoker (SYMFONY-BEACON spec 241 T020): with `write_unit.enabled: true` and
+  nowo-tech/transaction-doctrine ^1.3, the execution of each additive or destructive tool runs inside
+  transaction-doctrine's `WriteUnitInterface`, so a lock conflict replays the tool, not the request. Read-only tools are
+  never wrapped. The checks, the write budget and the audit event stay outside the unit: one `consumeWrite` and one
+  `McpToolCallEvent` per call, dispatched after the final outcome. When the retries run out the call answers JSON-RPC
+  `-31007` (`McpProtocol::WRITE_CONFLICT`) with transaction-doctrine's conflict status (409 by default) and
+  `error.data = {code: "CONFLICT_001", retry_after: n, committed: false}` plus `Retry-After`; when the failed attempt
+  had already committed (`ConcurrencyConflict::$committed`), `{code: "CONFLICT_002", committed: true}` with no retry
+  hint. Each attempt gets a fresh `McpToolCall` (new `$attempt`, 1-based); nothing of a failed attempt reaches the
+  replay, without depending on transaction-doctrine's reset hooks. New: `Write\McpWriteRunnerInterface`,
+  `Write\McpWriteConflict`, `Bridge\TransactionDoctrine\TransactionDoctrineWriteRunner`,
+  `JsonRpcError::writeConflict()`, `McpCallOutcome::Conflict`. Option off or package absent: unchanged (BC test)
 - Demo: Playwright e2e (home page and a real `tools/list` call), `make test-e2e` / `make demo-screenshots` and one WebP screenshot in the README (REQ-DEMO-013)
 
 ### Changed

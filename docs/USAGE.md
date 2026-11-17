@@ -10,6 +10,7 @@
 - [Resource templates](#resource-templates)
 - [Paging and caps](#paging-and-caps)
 - [Untrusted content](#untrusted-content)
+- [Write units](#write-units)
 - [Audit event](#audit-event)
 - [Call context](#call-context)
 - [Standard Symfony host](#standard-symfony-host)
@@ -201,6 +202,7 @@ authorizer allows, in a fixed order (priority descending, then name), with `ttlM
 | Additive/destructive without an audit listener | `isError` `AUDIT_001` |
 | Write budget (`consumeWrite`) refused | 429 `-31001` `data.limit: writes` |
 | The tool throws `McpToolError` | `isError` with its `ECODE`, message and extra fields |
+| Write unit gave up on a lock conflict (`write_unit.enabled` only) | 409 `-31007` `data.code: CONFLICT_001` / `CONFLICT_002` |
 | Output does not match `outputSchema` | `-32603` (logged) |
 | Result above `max_result_bytes` | `isError` `OUTPUT_001` |
 
@@ -293,11 +295,51 @@ Values written by people (titles, Markdown, comments, names…) go in `McpUntrus
 
 Marking is defence in depth, never a guarantee: a server cannot prevent prompt injection.
 
+## Write units
+
+With `write_unit.enabled: true` and `nowo-tech/transaction-doctrine` ^1.3, the execution of an additive or destructive
+tool runs as a transaction-doctrine write unit **inside the invoker**: after a deadlock or lock wait timeout the tool is
+replayed, not the HTTP request. Read-only tools are never wrapped.
+
+- **Once per call, not per attempt:** the checks, the write budget (`consumeWrite`) and the audit event stay outside
+  the unit. The audit event is dispatched once, **after the final outcome** (`ok`, `tool_error`, `conflict`, …), so a
+  replayed call writes one audit row, and a failed attempt writes none. The listener therefore runs outside the tool's
+  transaction, as it always did (tools commit their own work before returning).
+- **Every attempt is fresh:** the tool gets a new `McpToolCall` per attempt, with `$call->attempt` (1-based). The
+  arguments, context and request view are rebuilt from the call's immutable inputs; McpKit keeps nothing of a failed
+  attempt, and does not depend on transaction-doctrine's reset hooks. A replay clears the entity managers: load what
+  you change inside the tool, by id. The principal's `$user` (the firewall user) and `$hostContext` are the host's
+  objects: read their ids, do not attach them to new entities after a replay.
+- **The tool must be replayable** (transaction-doctrine's rule): it commits at most once, or is idempotent as a whole,
+  and keeps side effects (mail, messages, HTTP calls) until after its commit.
+- **When retries run out**, the call answers a JSON-RPC error `-31007` with the status of transaction-doctrine's
+  `conflict_response` (409 by default, 503 if configured), on both eras:
+
+  ```json
+  {"jsonrpc": "2.0", "id": 1, "error": {"code": -31007, "message": "Write conflict; retry later",
+   "data": {"code": "CONFLICT_001", "retry_after": 1, "committed": false}}}
+  ```
+
+  plus `Retry-After: 1`. When the failed attempt had already committed part of its writes
+  (`ConcurrencyConflict::$committed`, transaction-doctrine's `commit_detection`), the unit is not replayed and the
+  answer carries no retry hint, because a blind retry could repeat the committed part:
+
+  ```json
+  {"error": {"code": -31007, "message": "Write conflict; part of the change may be saved, read it again before retrying",
+   "data": {"code": "CONFLICT_002", "committed": true}}}
+  ```
+
+  The audit event has outcome `conflict` with `ECODE` `CONFLICT_001` / `CONFLICT_002`.
+- **Do not wrap the MCP route** in transaction-doctrine's `controller_routes` or `#[AsWriteUnit]`: the invoker answers
+  conflicts itself, and a request-level replay would consume the budget and audit twice.
+- Option off, or transaction-doctrine absent: tools run once, exactly as in 1.1 (a database failure is `-32603`).
+- A host can plug another retry layer through `Write\McpWriteRunnerInterface` (pass it as the invoker's last argument).
+
 ## Audit event
 
 `Event\McpToolCallEvent` (`McpKitEvents::TOOL_CALL`) is dispatched after every call that reaches the registry, refusals
 included: principal (no secret), tool name and kind, outcome (`ok`, `saved_without_result`, `tool_error`, `refused`,
-`invalid_input`, `rate_limited`, `internal_error`), `ECODE`, audit ids and changed field names, call context, duration. Never arguments, results or
+`invalid_input`, `rate_limited`, `conflict`, `internal_error`), `ECODE`, audit ids and changed field names, call context, duration. Never arguments, results or
 text. A listener that throws is logged and does not change the answer: the call happened.
 
 ## Call context

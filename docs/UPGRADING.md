@@ -2,8 +2,24 @@
 
 ## Table of contents
 
+- [Upgrading to the next minor (write units)](#upgrading-to-the-next-minor-write-units)
 - [Upgrading to 1.1.0](#upgrading-to-110)
 - [Adopting 1.0.0](#adopting-100)
+
+## Upgrading to the next minor (write units)
+
+No action is required: `write_unit.enabled` is off by default and nothing changes without it.
+
+To run write tools as write units (recommended with nowo-tech/transaction-doctrine):
+
+1. `composer require nowo-tech/transaction-doctrine:^1.3` and enable its bundle.
+2. Set `nowo_mcp_kit.write_unit.enabled: true`.
+3. Remove the MCP route from transaction-doctrine's `controller_routes` if you listed it there: the invoker now replays
+   the tool itself, and a route-level unit would never see the conflict.
+4. Check that each additive or destructive tool is replayable: it loads what it changes by id, commits at most once and
+   sends side effects after its commit. `McpToolCall::$attempt` tells a tool which attempt it is on.
+5. If you `match` exhaustively on `McpCallOutcome`, add the new `Conflict` case (`conflict`); clients may now receive
+   the JSON-RPC error `-31007` (`McpProtocol::WRITE_CONFLICT`) with `data.code` `CONFLICT_001` or `CONFLICT_002`.
 
 ## Upgrading to 1.1.0
 

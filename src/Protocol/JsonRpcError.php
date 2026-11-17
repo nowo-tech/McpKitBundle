@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\McpKitBundle\Protocol;
 
 use Nowo\McpKitBundle\Security\McpRateLimitState;
+use Nowo\McpKitBundle\Write\McpWriteConflict;
 use RuntimeException;
 
 use function max;
@@ -127,5 +128,23 @@ final class JsonRpcError extends RuntimeException
     public static function rateLimited(McpRateLimitState $state, string $limit, int $now): self
     {
         return new self(McpProtocol::RATE_LIMITED, 'Rate limit reached', 429, ['limit' => $limit], ['Retry-After' => (string) max(1, $state->resetAt - $now)]);
+    }
+
+    /**
+     * A write tool met a lock conflict after its write unit gave up: `-31007` with the policy's status (409 by default)
+     * on both eras. Retryable: `data = {code: CONFLICT_001, retry_after: n, committed: false}` and `Retry-After`.
+     * Committed: `data = {code: CONFLICT_002, committed: true}`, no retry hint (a blind retry could repeat the write).
+     *
+     * @param McpWriteConflict $conflict the conflict
+     *
+     * @return self the error
+     */
+    public static function writeConflict(McpWriteConflict $conflict): self
+    {
+        if ($conflict->retryAfterSeconds === null) {
+            return new self(McpProtocol::WRITE_CONFLICT, 'Write conflict; part of the change may be saved, read it again before retrying', $conflict->status, ['code' => $conflict->errorCode(), 'committed' => $conflict->committed]);
+        }
+
+        return new self(McpProtocol::WRITE_CONFLICT, 'Write conflict; retry later', $conflict->status, ['code' => $conflict->errorCode(), 'retry_after' => $conflict->retryAfterSeconds, 'committed' => false], ['Retry-After' => (string) $conflict->retryAfterSeconds]);
     }
 }

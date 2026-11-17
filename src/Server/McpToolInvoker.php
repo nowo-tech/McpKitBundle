@@ -25,6 +25,8 @@ use Nowo\McpKitBundle\Tool\McpToolDefinition;
 use Nowo\McpKitBundle\Tool\McpToolError;
 use Nowo\McpKitBundle\Tool\McpToolKind;
 use Nowo\McpKitBundle\Tool\McpToolResult;
+use Nowo\McpKitBundle\Write\McpWriteConflict;
+use Nowo\McpKitBundle\Write\McpWriteRunnerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -59,6 +61,12 @@ use const JSON_THROW_ON_ERROR;
  * `-31001`) → the tool → output schema (`-32603` on mismatch) → result cap (`OUTPUT_001`). For additive and destructive
  * tools, anything that fails after the tool returned answers `SAVED_001` with the write's ids and the fixed "saved, do
  * not repeat" text (the write is committed). Every call that reaches the registry dispatches one {@see McpToolCallEvent}.
+ *
+ * With a write runner (option `write_unit.enabled`), the execution of an additive or destructive tool, and only that, runs
+ * as a write unit: a lock conflict replays the tool, not the request. The precheck, the write budget and the audit event
+ * stay outside the unit, so each happens once per tool call; the audit event is dispatched after the final outcome
+ * (`ok`, `tool_error`, `conflict`, …), never per attempt. Every attempt gets a fresh {@see McpToolCall} (arguments,
+ * context, request view) built from the call's immutable inputs: nothing of a failed attempt reaches the replay.
  */
 final readonly class McpToolInvoker
 {
@@ -81,6 +89,7 @@ final readonly class McpToolInvoker
      * @param int $maxResultBytes serialized result cap
      * @param int $slowCallMs slow-call warning threshold
      * @param LoggerInterface|null $logger logger (tool names, outcomes and exception classes only)
+     * @param McpWriteRunnerInterface|null $writeRunner runs write tools as write units; null: they run once, unwrapped
      */
     public function __construct(
         private McpToolRegistry $registry,
@@ -91,6 +100,7 @@ final readonly class McpToolInvoker
         private int $maxResultBytes = 2097152,
         private int $slowCallMs = 2000,
         ?LoggerInterface $logger = null,
+        private ?McpWriteRunnerInterface $writeRunner = null,
     ) {
         $this->logger = $logger ?? new NullLogger();
     }
@@ -143,7 +153,7 @@ final readonly class McpToolInvoker
      * @param McpPrincipal $principal the principal
      * @param Request $request the HTTP request
      *
-     * @throws JsonRpcError on a protocol error or a refused write budget
+     * @throws JsonRpcError on a protocol error, a refused write budget or a write conflict (`-31007`)
      *
      * @return stdClass the `CallToolResult` (without the modern decoration)
      */
@@ -180,9 +190,14 @@ final readonly class McpToolInvoker
                 }
             }
             try {
-                $result = $this->registry->tool($name)->call(new McpToolCall($principal, $this->toArray($arguments), $context, $request));
+                $result = $this->execute($definition, $principal, $arguments, $context, $request);
             } catch (McpToolError $toolError) {
                 return $this->finish(McpCallOutcome::ToolError, $toolError, null, $principal, $definition, $context, $started);
+            } catch (McpWriteConflict $conflict) {
+                $this->logger->warning('MCP: write tool gave up after a database lock conflict.', ['bundle' => 'nowo_mcp_kit', 'tool' => $name, 'attempts' => $conflict->attempts, 'committed' => $conflict->committed]);
+                $this->audit(McpCallOutcome::Conflict, $conflict->errorCode(), null, $principal, $definition, $context, $started);
+
+                throw JsonRpcError::writeConflict($conflict);
             }
 
             if (!$definition->kind->writes()) {
@@ -202,6 +217,31 @@ final readonly class McpToolInvoker
 
             throw JsonRpcError::internal();
         }
+    }
+
+    /**
+     * Runs the tool: once for a read-only tool or without a write runner; else inside the write runner, with a fresh
+     * {@see McpToolCall} per attempt ({@see McpToolAttempt}).
+     *
+     * @param McpToolDefinition $definition the tool
+     * @param McpPrincipal $principal the principal
+     * @param stdClass $arguments the validated arguments
+     * @param McpCallContext $context the call context
+     * @param Request $request the HTTP request
+     *
+     * @throws McpToolError a business refusal of the tool
+     * @throws McpWriteConflict when the write unit gave up
+     *
+     * @return McpToolResult the tool's result
+     */
+    private function execute(McpToolDefinition $definition, McpPrincipal $principal, stdClass $arguments, McpCallContext $context, Request $request): McpToolResult
+    {
+        $tool = $this->registry->tool($definition->name);
+        if (!$this->writeRunner instanceof McpWriteRunnerInterface || !$definition->kind->writes()) {
+            return $tool->call(new McpToolCall($principal, $this->toArray($arguments), $context, $request));
+        }
+
+        return $this->writeRunner->run(new McpToolAttempt($tool, $principal, $this->toArray($arguments), $context, $request));
     }
 
     /**

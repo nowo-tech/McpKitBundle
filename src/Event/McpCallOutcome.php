@@ -20,6 +20,8 @@ enum McpCallOutcome: string
     case InvalidInput = 'invalid_input';
     /** The write budget refused the call (429). */
     case RateLimited = 'rate_limited';
+    /** A write tool met a lock conflict after its write unit gave up (`-31007`, `CONFLICT_001` / `CONFLICT_002`). */
+    case Conflict = 'conflict';
     /** An unexpected error (`-32603`). */
     case InternalError = 'internal_error';
 }
