@@ -47,7 +47,10 @@ injection). The bundle cannot prevent prompt injection; it labels data as data a
   event (`hooks.principal_refresher`, else the firewall's user provider) and, if that fails, logs it and sends the
   event with the original principal. An audit listener that links a detached entity would fail, and the bundle only
   logs listener failures, so **audit listeners must refer to the principal by id** (or rely on the refreshed
-  principal) for every write to be audited (audit SZ-M1). A conflict after a partial commit answers the `isError`
+  principal) for every write to be audited (audit SZ-M1). When the refresh fails (disabled or deleted user, store
+  down) the listener sees a detached user; id-based recording such as AuditKit `recordIdsAndFlush()` survives every
+  path. The default refresher accepts the reloaded user only when it has the same class and `getUserIdentifier()` as
+  the original; otherwise it logs a constant message and keeps the original principal (SZ-L2). A conflict after a partial commit answers the `isError`
   result `CONFLICT_002` with a fixed "saved, do not repeat; read it again" text and no retry hint, never a protocol
   error that SDK clients might retry (IH-L2, SZ-L1). Neither answer carries SQL, parameters or exception text.
 - Schemas resolve only local `$defs`; nothing is fetched.

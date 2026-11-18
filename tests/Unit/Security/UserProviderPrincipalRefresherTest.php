@@ -9,9 +9,13 @@ use Nowo\McpKitBundle\Security\UserProviderPrincipalRefresher;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\AbstractLogger;
 use stdClass;
+use Stringable;
 use Symfony\Component\Security\Core\User\InMemoryUser;
 use Symfony\Component\Security\Core\User\InMemoryUserProvider;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\UserProviderInterface;
 
 #[CoversClass(UserProviderPrincipalRefresher::class)]
 final class UserProviderPrincipalRefresherTest extends TestCase
@@ -32,6 +36,56 @@ final class UserProviderPrincipalRefresherTest extends TestCase
         self::assertTrue($refreshed->destructiveAllowed);
         self::assertSame(['demo' => 'full'], $refreshed->grants);
         self::assertSame($context, $refreshed->hostContext);
+    }
+
+    #[Test]
+    public function aDifferentRefreshedUserIsRefused(): void
+    {
+        $principal = new McpPrincipal(new InMemoryUser('grace', ''), 'id-grace', 'Grace');
+        $logger    = new class extends AbstractLogger {
+            /** @var list<string> */
+            public array $messages = [];
+
+            public function log($level, string|Stringable $message, array $context = []): void
+            {
+                $this->messages[] = (string) $message;
+            }
+        };
+
+        // Another identifier, same class.
+        $other = (new UserProviderPrincipalRefresher($this->providerReturning(new InMemoryUser('ada', '')), $logger))->refresh($principal);
+        self::assertSame($principal, $other);
+
+        // Same identifier, another class.
+        $impostor = new class implements UserInterface {
+            public function getRoles(): array
+            {
+                return [];
+            }
+
+            public function eraseCredentials(): void
+            {
+            }
+
+            public function getUserIdentifier(): string
+            {
+                return 'grace';
+            }
+        };
+        self::assertSame($principal, (new UserProviderPrincipalRefresher($this->providerReturning($impostor), $logger))->refresh($principal));
+        self::assertCount(2, $logger->messages);
+        self::assertSame("MCP: the refreshed user is not the principal's user; auditing the original principal.", $logger->messages[0]);
+    }
+
+    /**
+     * @return UserProviderInterface<UserInterface>
+     */
+    private function providerReturning(UserInterface $user): UserProviderInterface
+    {
+        $provider = $this->createStub(UserProviderInterface::class);
+        $provider->method('refreshUser')->willReturn($user);
+
+        return $provider;
     }
 
     #[Test]

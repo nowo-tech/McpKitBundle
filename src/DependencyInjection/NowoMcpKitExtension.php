@@ -114,6 +114,10 @@ final class NowoMcpKitExtension extends Extension
             new Reference('security.helper', ContainerInterface::NULL_ON_INVALID_REFERENCE),
         ]);
 
+        if ($config['hooks']['principal_refresher'] !== null && !$config['write_unit']['enabled']) {
+            throw new InvalidConfigurationException('nowo_mcp_kit.hooks.principal_refresher is only used with nowo_mcp_kit.write_unit.enabled: true; enable write units or remove the hook.');
+        }
+
         $writeRunner        = null;
         $principalRefresher = null;
         if ($config['write_unit']['enabled']) {
@@ -126,6 +130,7 @@ final class NowoMcpKitExtension extends Extension
             if ($config['hooks']['principal_refresher'] === null) {
                 $container->register(UserProviderPrincipalRefresher::class, UserProviderPrincipalRefresher::class)->setArguments([
                     new Reference('security.user_providers', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+                    new Reference('logger', ContainerInterface::IGNORE_ON_INVALID_REFERENCE),
                 ]);
             }
             $principalRefresher = new Reference($config['hooks']['principal_refresher'] ?? UserProviderPrincipalRefresher::class);

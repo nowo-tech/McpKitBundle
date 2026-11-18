@@ -157,6 +157,14 @@ final class NowoMcpKitExtensionTest extends TestCase
     }
 
     #[Test]
+    public function thePrincipalRefresherHookNeedsWriteUnits(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('only used with nowo_mcp_kit.write_unit.enabled');
+        (new NowoMcpKitExtension())->load([['enabled' => true, 'hooks' => ['authenticator' => 'app.auth', 'principal_refresher' => 'app.refresher']]], new ContainerBuilder());
+    }
+
+    #[Test]
     public function theHostPrincipalRefresherWins(): void
     {
         $container = new ContainerBuilder();

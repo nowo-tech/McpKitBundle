@@ -174,5 +174,12 @@ final class WriteUnitAuditTest extends KernelTestCase
         self::assertCount(1, $events, 'the event is never dropped');
         self::assertSame('id-grace', $events[0]->principal->tokenId);
         self::assertFalse($this->orm($kernel)->em->contains($events[0]->principal->user), 'the original, detached user');
+
+        // What is left over: a listener that links the detached entity fails, and in host flush mode its row stays queued
+        // in the shared manager. Id-based recording (AuditKit recordIdsAndFlush()) survives this path (SZ-L3).
+        self::assertSame([], $this->orm($kernel)->auditRows());
+        self::assertNotSame([], $this->service($kernel, OrmAuditListener::class)->failures);
+        self::assertTrue($this->orm($kernel)->hasQueuedWork());
+        $this->orm($kernel)->em->clear();
     }
 }

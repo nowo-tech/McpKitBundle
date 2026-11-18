@@ -24,7 +24,9 @@ All notable changes to this project are documented here. The format follows
   entity managers, detaching `$user` and `$hostContext`), the invoker refreshes the principal through the new optional
   hook `hooks.principal_refresher` (`Security\McpPrincipalRefresherInterface`), else the firewall's user provider
   (`Security\UserProviderPrincipalRefresher`, `refreshUser()`). A failed refresh is logged and the event still goes
-  out with the original principal. Listeners must refer to the principal by id or rely on the refreshed principal
+  out with the original principal. Listeners must refer to the principal by id or rely on the refreshed principal.
+  The default refresher accepts the reloaded user only with the same class and `getUserIdentifier()` (SZ-L2);
+  `hooks.principal_refresher` without `write_unit.enabled` is refused at build time (SZ-I6)
 - `McpToolCallEvent::$attempts` (times the tool ran) and `McpToolCallEvent::$replayed`
 - Demo: Playwright e2e (home page and a real `tools/list` call), `make test-e2e` / `make demo-screenshots` and one WebP screenshot in the README (REQ-DEMO-013)
 

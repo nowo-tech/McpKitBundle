@@ -318,7 +318,10 @@ replayed, not the HTTP request. Read-only tools are never wrapped.
   user provider (`refreshUser()`, when `$user` is a `UserInterface`). If the refresh fails, it is logged and the event
   goes out with the original principal: it is never dropped. **`McpToolCallEvent` listeners must refer to the principal
   by id** (`$event->principal->tokenId`, the user's identifier), or rely on the refreshed principal; a listener that
-  links a detached entity loses its row.
+  links a detached entity loses its row. When the refresh fails (disabled or deleted user, store down) the listener
+  sees a detached user; id-based recording such as AuditKit `recordIdsAndFlush()` survives every path. The default
+  refresher accepts the reloaded user only with the same class and `getUserIdentifier()`, else it keeps the original
+  and logs it. `hooks.principal_refresher` without `write_unit.enabled` is refused at build time.
 - **The unit runs only once** when a transaction is already open or an entity manager has unsaved changes (it cannot
   replay safely): authenticators and rate limiters that use Doctrine should flush or clear before the tool runs.
 - **The tool must be replayable** (transaction-doctrine's rule): it commits at most once, or is idempotent as a whole,
@@ -342,8 +345,8 @@ replayed, not the HTTP request. Read-only tools are never wrapped.
   ```
 
   with no retry hint. The audit event has outcome `conflict` with `ECODE` `CONFLICT_001` / `CONFLICT_002`.
-- **Do not wrap the MCP route** in transaction-doctrine's `controller_routes` or `#[AsWriteUnit]`: the invoker answers
-  conflicts itself, and a request-level replay would consume the budget and audit twice.
+- **Do not wrap the MCP route** in transaction-doctrine's `controller_routes` or `#[AsWriteUnit]`: a route-level unit
+  never sees the conflict, because the invoker turns it into a response; use `write_unit.enabled` instead.
 - Option off, or transaction-doctrine absent: tools run once, exactly as in 1.1 (a database failure is `-32603`).
 - A host can plug another retry layer through `Write\McpWriteRunnerInterface` (pass it as the invoker's last argument).
 
