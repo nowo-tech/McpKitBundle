@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\McpKitBundle\DependencyInjection;
 
+use Nowo\McpKitBundle\Bridge\TransactionDoctrine\TransactionDoctrineWriteRunner;
 use Nowo\McpKitBundle\Context\McpCallContextProvider;
 use Nowo\McpKitBundle\DependencyInjection\Compiler\McpRegistryPass;
 use Nowo\McpKitBundle\Http\McpEndpointController;
@@ -17,12 +18,15 @@ use Nowo\McpKitBundle\Security\AlwaysAvailable;
 use Nowo\McpKitBundle\Security\DenyingMcpRateLimiter;
 use Nowo\McpKitBundle\Security\DenyingMcpToolAuthorizer;
 use Nowo\McpKitBundle\Security\McpFirewallGuard;
+use Nowo\McpKitBundle\Security\UserProviderPrincipalRefresher;
 use Nowo\McpKitBundle\Server\McpDispatcher;
 use Nowo\McpKitBundle\Server\McpResourceReader;
 use Nowo\McpKitBundle\Server\McpServerInfo;
 use Nowo\McpKitBundle\Server\McpToolInvoker;
 use Nowo\McpKitBundle\Tool\McpResourceTemplateInterface;
 use Nowo\McpKitBundle\Tool\McpToolInterface;
+use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
+use Nowo\TransactionDoctrine\WriteUnit\WriteUnitInterface;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Argument\ServiceLocatorArgument;
@@ -34,6 +38,7 @@ use Symfony\Component\DependencyInjection\Reference;
 
 use function array_map;
 use function array_values;
+use function interface_exists;
 use function strtolower;
 
 /**
@@ -63,7 +68,7 @@ final class NowoMcpKitExtension extends Extension
      */
     public function load(array $configs, ContainerBuilder $container): void
     {
-        /** @var array{enabled: bool, path: string, server_info: array{name: string, title: string|null, version: string}, allowed_origins: list<string>, legacy: array{enabled: bool, versions: list<string>}, cache: array{discover_ttl_ms: int, tools_list_ttl_ms: int, templates_list_ttl_ms: int, resources_list_ttl_ms: int}, limits: array{max_body_bytes: int, max_json_depth: int, max_text_chars: int, max_list_rows: int, max_result_bytes: int, slow_call_ms: int}, maintenance_retry_after: int, firewall_check: bool, hooks: array{authenticator: string|null, authorizer: string|null, rate_limiter: string|null, availability: string|null}} $config */
+        /** @var array{enabled: bool, path: string, server_info: array{name: string, title: string|null, version: string}, allowed_origins: list<string>, legacy: array{enabled: bool, versions: list<string>}, cache: array{discover_ttl_ms: int, tools_list_ttl_ms: int, templates_list_ttl_ms: int, resources_list_ttl_ms: int}, limits: array{max_body_bytes: int, max_json_depth: int, max_text_chars: int, max_list_rows: int, max_result_bytes: int, slow_call_ms: int}, maintenance_retry_after: int, firewall_check: bool, write_unit: array{enabled: bool}, hooks: array{authenticator: string|null, authorizer: string|null, rate_limiter: string|null, availability: string|null, principal_refresher: string|null}} $config */
         $config = $this->processConfiguration(new Configuration(), $configs);
 
         $container->setParameter('nowo_mcp_kit.enabled', $config['enabled']);
@@ -109,6 +114,28 @@ final class NowoMcpKitExtension extends Extension
             new Reference('security.helper', ContainerInterface::NULL_ON_INVALID_REFERENCE),
         ]);
 
+        if ($config['hooks']['principal_refresher'] !== null && !$config['write_unit']['enabled']) {
+            throw new InvalidConfigurationException('nowo_mcp_kit.hooks.principal_refresher is only used with nowo_mcp_kit.write_unit.enabled: true; enable write units or remove the hook.');
+        }
+
+        $writeRunner        = null;
+        $principalRefresher = null;
+        if ($config['write_unit']['enabled']) {
+            $this->requireWriteUnit(WriteUnitInterface::class);
+            $container->register(TransactionDoctrineWriteRunner::class, TransactionDoctrineWriteRunner::class)->setArguments([
+                new Reference(WriteUnitInterface::class),
+                new Reference(ConflictResponsePolicy::class, ContainerInterface::NULL_ON_INVALID_REFERENCE),
+            ]);
+            $writeRunner = new Reference(TransactionDoctrineWriteRunner::class);
+            if ($config['hooks']['principal_refresher'] === null) {
+                $container->register(UserProviderPrincipalRefresher::class, UserProviderPrincipalRefresher::class)->setArguments([
+                    new Reference('security.user_providers', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+                    new Reference('logger', ContainerInterface::IGNORE_ON_INVALID_REFERENCE),
+                ]);
+            }
+            $principalRefresher = new Reference($config['hooks']['principal_refresher'] ?? UserProviderPrincipalRefresher::class);
+        }
+
         $container->registerForAutoconfiguration(McpToolInterface::class)->addTag(McpRegistryPass::TOOL_TAG);
         $container->register(DenyingMcpToolAuthorizer::class, DenyingMcpToolAuthorizer::class);
         $container->register(McpToolRegistry::class, McpToolRegistry::class)->setArguments([[], new ServiceLocatorArgument([])]);
@@ -121,6 +148,8 @@ final class NowoMcpKitExtension extends Extension
             $config['limits']['max_result_bytes'],
             $config['limits']['slow_call_ms'],
             new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+            $writeRunner,
+            $principalRefresher,
         ]);
 
         $container->registerForAutoconfiguration(McpResourceTemplateInterface::class)->addTag(McpRegistryPass::TEMPLATE_TAG);
@@ -167,5 +196,19 @@ final class NowoMcpKitExtension extends Extension
             ])
             ->setPublic(true)
             ->addTag('controller.service_arguments'));
+    }
+
+    /**
+     * Refuses `write_unit.enabled` without nowo-tech/transaction-doctrine ^1.3 (its write unit port appeared in 1.3.0).
+     *
+     * @param string $interface the write unit port
+     *
+     * @throws InvalidConfigurationException when the package is missing
+     */
+    private function requireWriteUnit(string $interface): void
+    {
+        if (!interface_exists($interface)) {
+            throw new InvalidConfigurationException('nowo_mcp_kit.write_unit.enabled needs nowo-tech/transaction-doctrine ^1.3 and its bundle (composer require nowo-tech/transaction-doctrine).');
+        }
     }
 }

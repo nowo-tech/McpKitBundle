@@ -119,6 +119,13 @@ clients get a retryable refusal instead of a broken call (FR-SEC-*, `maintenance
   (`OUTPUT_001`).
 - **FR-TOOL-004** Business errors are `isError` results `{ECODE, err}` with extra fields; other failures `-32603`,
   except after a committed write, which answers a success with its ids and a fixed notice.
+- **FR-TOOL-005** With `write_unit.enabled` (nowo-tech/transaction-doctrine ^1.3), the execution of an additive or
+  destructive tool runs as a write unit inside the invoker: a lock conflict replays the tool, not the request; the
+  write budget and the audit event happen once per call, after the outcome; read-only tools are never wrapped; a
+  conflict that outlives the retries answers `-31007` with `data.code` `CONFLICT_001` and `retry_after`; when the
+  failed attempt had already committed, the `isError` result `CONFLICT_002` (saved, do not repeat). After a replay or a
+  conflict the principal is refreshed before the event (hook, else the firewall user provider); a failed refresh never
+  drops the event. Option off: unchanged.
 - **FR-ENV-001** Untrusted groups are emitted under `untrusted` behind the fixed notice; the text block escapes hidden
   characters.
 - **FR-AUDIT-001** One `McpToolCallEvent` per call that reaches the registry, ids and field names only; a throwing

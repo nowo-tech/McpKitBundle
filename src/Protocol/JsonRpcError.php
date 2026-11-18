@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\McpKitBundle\Protocol;
 
 use Nowo\McpKitBundle\Security\McpRateLimitState;
+use Nowo\McpKitBundle\Write\McpWriteConflict;
 use RuntimeException;
 
 use function max;
@@ -127,5 +128,22 @@ final class JsonRpcError extends RuntimeException
     public static function rateLimited(McpRateLimitState $state, string $limit, int $now): self
     {
         return new self(McpProtocol::RATE_LIMITED, 'Rate limit reached', 429, ['limit' => $limit], ['Retry-After' => (string) max(1, $state->resetAt - $now)]);
+    }
+
+    /**
+     * A write tool met a lock conflict after its write unit gave up, and nothing of it was committed: `-31007` with the
+     * policy's status (409 by default) on both eras, `data = {code: CONFLICT_001, retry_after: n}` and `Retry-After`.
+     * A conflict after a partial commit is never a protocol error: the invoker answers the `isError` result
+     * `CONFLICT_002` instead (audit SZ-L1).
+     *
+     * @param McpWriteConflict $conflict the retryable conflict
+     *
+     * @return self the error
+     */
+    public static function writeConflict(McpWriteConflict $conflict): self
+    {
+        $retryAfter = $conflict->retryAfterSeconds ?? McpWriteConflict::DEFAULT_RETRY_AFTER;
+
+        return new self(McpProtocol::WRITE_CONFLICT, 'Write conflict; retry later', $conflict->status, ['code' => McpWriteConflict::RETRYABLE_CODE, 'retry_after' => $retryAfter], ['Retry-After' => (string) $retryAfter]);
     }
 }

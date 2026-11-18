@@ -30,11 +30,14 @@ nowo_mcp_kit:
     maintenance_retry_after: 60 # Retry-After of the maintenance 503
     firewall_check: true        # 500 unless the firewall user is the principal's user behind a secured, stateless firewall
                                 # false: tests only, refused unless kernel.debug is true
+    write_unit:
+        enabled: false          # true: write tools run as transaction-doctrine (^1.3) write units inside the invoker
     hooks:
         authenticator: ~        # McpRequestAuthenticatorInterface service id: required when enabled
         authorizer: ~           # McpToolAuthorizerInterface: default allows no tool
         rate_limiter: ~         # McpRateLimiterInterface: default refuses every request (429)
         availability: ~         # McpRequestAvailabilityInterface: default always available
+        principal_refresher: ~  # McpPrincipalRefresherInterface (write_unit only): default the firewall user provider
 ```
 
 ## Table of contents
@@ -43,6 +46,7 @@ nowo_mcp_kit:
 - [Hooks](#hooks)
 - [Firewall](#firewall)
 - [Versions](#versions)
+- [Write units](#write-units)
 
 ## Route
 
@@ -88,3 +92,13 @@ tests only: the container refuses it unless `kernel.debug` is true.
 
 Modern `2026-07-28` is always served. `legacy.versions` is a non-empty subset of `2025-11-25` and `2025-06-18`, newest
 first; an `initialize` asking for another version gets the first one.
+
+## Write units
+
+`write_unit.enabled: true` needs `nowo-tech/transaction-doctrine` ^1.3 with its bundle enabled (the container refuses to
+build otherwise). The tool's execution then runs inside transaction-doctrine's `WriteUnitInterface` service, so its
+`max_attempts`, `backoff`, `replay_on` and `commit_detection` apply, and the conflict answer reads the status and
+`Retry-After` of its `conflict_response` (`ConflictResponsePolicy`). Do **not** also list the MCP route in
+transaction-doctrine's `controller_routes`: the invoker answers the conflict itself, so a route-level unit never sees
+it, and replaying the request would consume the write budget and write the audit row twice. See
+[USAGE.md](USAGE.md#write-units).

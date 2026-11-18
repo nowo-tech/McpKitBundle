@@ -80,7 +80,13 @@ Scope: every file under `src/` plus the shipped route imports under `config/rout
 | `src/Schema/McpSchemaRules.php` | Tools | FR-TOOL-001 |
 | `src/Schema/McpSchemaNormalizer.php` | Tools | FR-TOOL-002 |
 | `src/Schema/McpSchemaValidator.php` | Tools | FR-TOOL-003 |
-| `src/Server/McpToolInvoker.php` | Tools | FR-TOOL-002..004, FR-AUDIT-001 |
+| `src/Server/McpToolInvoker.php` | Tools | FR-TOOL-002..005, FR-AUDIT-001 |
+| `src/Server/McpToolAttempt.php` | Tools | FR-TOOL-005 |
+| `src/Write/McpWriteRunnerInterface.php` | Tools | FR-TOOL-005 |
+| `src/Write/McpWriteConflict.php` | Tools | FR-TOOL-005 |
+| `src/Bridge/TransactionDoctrine/TransactionDoctrineWriteRunner.php` | Tools | FR-TOOL-005 |
+| `src/Security/McpPrincipalRefresherInterface.php` | Tools | FR-TOOL-005, FR-AUDIT-001 |
+| `src/Security/UserProviderPrincipalRefresher.php` | Tools | FR-TOOL-005, FR-AUDIT-001 |
 | `src/Envelope/McpEnvelope.php` | Tools | FR-ENV-001 |
 | `src/Event/McpToolCallEvent.php` | Tools | FR-AUDIT-001 |
 | `src/Event/McpCallOutcome.php` | Tools | FR-AUDIT-001 |

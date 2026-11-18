@@ -28,6 +28,7 @@ final readonly class McpToolCall
      * @param McpCallContext $context era, version, client and tool name
      * @param Request $request the HTTP request (behind the firewall); deprecated, read {@see $http} instead
      * @param McpHttpRequest|null $http framework-free view of the request (built from `$request` when null)
+     * @param int $attempt attempt number (1-based); above 1 when a write unit replays the tool after a lock conflict
      */
     public function __construct(
         public McpPrincipal $principal,
@@ -36,6 +37,7 @@ final readonly class McpToolCall
         /** @deprecated since 1.1.0, read {@see $http} (no HttpFoundation type); removed in 2.0.0 */
         public Request $request,
         ?McpHttpRequest $http = null,
+        public int $attempt = 1,
     ) {
         $this->http = $http ?? McpHttpRequestFactory::fromRequest($request);
     }

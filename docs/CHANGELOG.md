@@ -7,6 +7,27 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Write tools run as write units inside the invoker (SYMFONY-BEACON spec 241 T020): with `write_unit.enabled: true` and
+  nowo-tech/transaction-doctrine ^1.3, the execution of each additive or destructive tool runs inside
+  transaction-doctrine's `WriteUnitInterface`, so a lock conflict replays the tool, not the request. Read-only tools are
+  never wrapped. The checks, the write budget and the audit event stay outside the unit: one `consumeWrite` and one
+  `McpToolCallEvent` per call, dispatched after the final outcome. When the retries run out the call answers JSON-RPC
+  `-31007` (`McpProtocol::WRITE_CONFLICT`) with transaction-doctrine's conflict status (409 by default),
+  `error.data = {code: "CONFLICT_001", retry_after: n}` and `Retry-After`; when the failed attempt had already
+  committed (`ConcurrencyConflict::$committed`), the `isError` tool result `CONFLICT_002` with a fixed "saved, do not
+  repeat; read it again" text and no retry hint, never a protocol error (audit IH-L2, SZ-L1). McpKit's own call data is
+  rebuilt per attempt (a new `McpToolCall` with `$attempt`); the HTTP request, principal and host context are the same
+  objects. New: `Write\McpWriteRunnerInterface`, `Write\McpWriteConflict`,
+  `Bridge\TransactionDoctrine\TransactionDoctrineWriteRunner`, `JsonRpcError::writeConflict()`,
+  `McpCallOutcome::Conflict`. Option off or package absent: unchanged (BC test)
+- Principal refresh before the audit event (audit SZ-M1): after a replay or any conflict (the write unit cleared the
+  entity managers, detaching `$user` and `$hostContext`), the invoker refreshes the principal through the new optional
+  hook `hooks.principal_refresher` (`Security\McpPrincipalRefresherInterface`), else the firewall's user provider
+  (`Security\UserProviderPrincipalRefresher`, `refreshUser()`). A failed refresh is logged and the event still goes
+  out with the original principal. Listeners must refer to the principal by id or rely on the refreshed principal.
+  The default refresher accepts the reloaded user only with the same class and `getUserIdentifier()` (SZ-L2);
+  `hooks.principal_refresher` without `write_unit.enabled` is refused at build time (SZ-I6)
+- `McpToolCallEvent::$attempts` (times the tool ran) and `McpToolCallEvent::$replayed`
 - Demo: Playwright e2e (home page and a real `tools/list` call), `make test-e2e` / `make demo-screenshots` and one WebP screenshot in the README (REQ-DEMO-013)
 
 ### Changed
