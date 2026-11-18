@@ -80,7 +80,7 @@ cache-clear: ensure-up
 	$(COMPOSE) exec -T php php bin/console cache:clear
 
 update-bundle: ensure-up
-	$(COMPOSE) exec -T php composer update nowo-tech/mcp-kit-bundle --no-interaction
+	$(COMPOSE) exec -T php composer update nowo-tech/mcp-kit-bundle -w --no-interaction
 	$(COMPOSE) exec -T php php bin/console cache:clear --env=dev
 	$(COMPOSE) exec -T php php bin/console assets:install public --no-interaction
 
