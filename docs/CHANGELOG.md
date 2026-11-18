@@ -5,6 +5,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-18
+
 ### Added
 
 - Write tools run as write units inside the invoker (SYMFONY-BEACON spec 241 T020): with `write_unit.enabled: true` and
