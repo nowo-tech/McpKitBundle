@@ -33,8 +33,8 @@ use function json_decode;
 use const JSON_THROW_ON_ERROR;
 
 /**
- * Audit SZ-M1: transaction-doctrine clears the host entity manager between attempts and before a committed conflict,
- * which detaches the principal's user. A host audit listener that links that user (flush mode "host") must still write
+ * Audit SZ-M1: transaction-doctrine < 1.8 cleared the host entity manager between attempts and before a committed conflict,
+ * which detached the principal's user; >= 1.8 restores it instead. A host audit listener that links that user (flush mode "host") must still write
  * its row for a replayed call and for `CONFLICT_002`, and must leave nothing queued in the shared manager.
  */
 #[CoversClass(McpToolInvoker::class)]
@@ -173,13 +173,11 @@ final class WriteUnitAuditTest extends KernelTestCase
         $events = $this->service($kernel, AuditRecorder::class)->events;
         self::assertCount(1, $events, 'the event is never dropped');
         self::assertSame('id-grace', $events[0]->principal->tokenId);
-        self::assertFalse($this->orm($kernel)->em->contains($events[0]->principal->user), 'the original, detached user');
-
-        // What is left over: a listener that links the detached entity fails, and in host flush mode its row stays queued
-        // in the shared manager. Id-based recording (AuditKit recordIdsAndFlush()) survives this path (SZ-L3).
-        self::assertSame([], $this->orm($kernel)->auditRows());
-        self::assertNotSame([], $this->service($kernel, OrmAuditListener::class)->failures);
-        self::assertTrue($this->orm($kernel)->hasQueuedWork());
-        $this->orm($kernel)->em->clear();
+        // transaction-doctrine >= 1.8 puts the host's manager back instead of clearing it (REQ-RUNTIME-003 rule 2), so the
+        // original user the authenticator loaded stays managed after the replay and the audit listener can link it.
+        self::assertTrue($this->orm($kernel)->em->contains($events[0]->principal->user), 'the original user, still managed');
+        self::assertSame([['note_lock', 'ok', 2]], $this->orm($kernel)->auditRows());
+        self::assertSame([], $this->service($kernel, OrmAuditListener::class)->failures);
+        self::assertFalse($this->orm($kernel)->hasQueuedWork());
     }
 }
