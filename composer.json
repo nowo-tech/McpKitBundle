@@ -59,7 +59,7 @@
         "friendsofphp/php-cs-fixer": "^3.0",
         "igor-php/igor-php": "^0.10.1",
         "nowo-tech/phpstan-frankenphp": "^1.0",
-        "nowo-tech/transaction-doctrine": "^1.8",
+        "nowo-tech/transaction-doctrine": "^1.8.1",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-symfony": "^2.0",
