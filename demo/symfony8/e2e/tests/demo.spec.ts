@@ -7,7 +7,7 @@ test.describe('McpKit demo', () => {
     page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
     const response = await page.goto('/');
     expect(response?.status()).toBe(200);
-    await expect(page.getByTestId('demo-masthead')).toBeVisible();
+    await expect(page.getByTestId('demo-platform')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Demo tokens (throwaway)' })).toBeVisible();
     await expect(page.locator('code', { hasText: 'demo-read-token-change-me' }).first()).toBeVisible();
     expect(errors).toEqual([]);

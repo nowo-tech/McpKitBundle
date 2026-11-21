@@ -44,7 +44,7 @@ make demo-smoke            # boot, HTTP 200, down
 make -C demo down-symfony8
 ```
 
-Screenshots must show the demo masthead, the bundle output and the Symfony web debug toolbar (REQ-DEMO-013).
+Screenshots must show the demo platform shell and the bundle output, without the Symfony web debug toolbar (REQ-DEMO-013, REQ-DEMO-014).
 
 ## Cursor Agent
 
