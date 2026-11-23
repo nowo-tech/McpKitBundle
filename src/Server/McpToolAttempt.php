@@ -37,6 +37,7 @@ final class McpToolAttempt
         private readonly McpPrincipal $principal,
         private readonly array $arguments,
         private readonly McpCallContext $context,
+        // @igor-ignore - Per-call object built with new by McpToolInvoker for one tool call; never a shared service.
         private readonly Request $request,
     ) {
     }

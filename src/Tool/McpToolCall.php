@@ -35,7 +35,7 @@ final readonly class McpToolCall
         public array $arguments,
         public McpCallContext $context,
         /** @deprecated since 1.1.0, read {@see $http} (no HttpFoundation type); removed in 2.0.0 */
-        public Request $request,
+        public Request $request, // @igor-ignore - Per-call value object built with new by McpToolAttempt for one tool call; never a shared service.
         ?McpHttpRequest $http = null,
         public int $attempt = 1,
     ) {

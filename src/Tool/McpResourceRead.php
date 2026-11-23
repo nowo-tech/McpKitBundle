@@ -34,7 +34,7 @@ final readonly class McpResourceRead
         public array $variables,
         public McpCallContext $context,
         /** @deprecated since 1.1.0, read {@see $http} (no HttpFoundation type); removed in 2.0.0 */
-        public Request $request,
+        public Request $request, // @igor-ignore - Per-call value object built with new by McpResourceReader for one resource read; never a shared service.
         ?McpHttpRequest $http = null,
     ) {
         $this->http = $http ?? McpHttpRequestFactory::fromRequest($request);
