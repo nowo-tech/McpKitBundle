@@ -39,7 +39,7 @@
         "changelog": "https://github.com/nowo-tech/McpKitBundle/blob/main/docs/CHANGELOG.md"
     },
     "require": {
-        "php": ">=8.2 <8.6",
+        "php": ">=8.2 <8.7",
         "opis/json-schema": "^2.4",
         "psr/clock": "^1.0",
         "psr/log": "^2.0 || ^3.0",

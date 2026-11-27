@@ -47,7 +47,7 @@ See [docs/USAGE.md](docs/USAGE.md) for the hooks and the first tool.
 
 ## Requirements
 
-- PHP 8.2+ (`>=8.2 <8.6`)
+- PHP 8.2+ (`>=8.2 <8.7`)
 - Symfony 7.4 or 8.x
 - A stateless firewall in front of the endpoint that turns the bearer token into the security user (recommended: `symfony/security-bundle`)
 
